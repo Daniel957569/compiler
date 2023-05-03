@@ -8,15 +8,16 @@ Array initArray() {
   Array array;
   array.capacity = 8;
   array.size = 0;
-  array.items = ALLOCATE(void *, 8);
+  array.items = ALLOCATE(Token, 8);
   return array;
 }
 
-void pushArray(void *item, Array *arr) {
+void pushArray(Token *item, Array *arr) {
   if (arr->capacity * GROWTH_FACTOR < arr->size) {
-    reallocate(arr->items, arr->size, arr->capacity);
-    arr->capacity *= 1.5;
+    arr->items =
+        GROW_ARRAY(Token, arr->items, arr->capacity, arr->capacity * 2);
+    arr->capacity *= 2;
   }
-  arr->items[arr->size] = (Token *)item;
+  arr->items[arr->size] = *item;
   arr->size++;
 }

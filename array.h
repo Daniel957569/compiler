@@ -7,11 +7,11 @@
 typedef struct {
   int size;
   int capacity;
-  void **items;
+  Token *items;
 } Array;
 
 Array initArray();
-void pushArray(void *item, Array *arr);
+void pushArray(Token *item, Array *arr);
 void freeArray(Array *arr);
 
 #endif

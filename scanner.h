@@ -1,8 +1,6 @@
 #ifndef scanner_h
 #define scanner_h
 
-#include "array.h"
-
 typedef enum {
   TOKEN_LEFT_PAREN,
   TOKEN_RIGHT_PAREN,
@@ -65,6 +63,14 @@ typedef struct {
   int line;
 } Token;
 
-Array getTokens(const char *source);
+// im a noobie so im using cheap solution cant use Array because of recursive,
+// fix later future me.
+
+typedef struct {
+  Token *tokens;
+  int size;
+} Tokens;
+
+Tokens getTokens(const char *source);
 
 #endif

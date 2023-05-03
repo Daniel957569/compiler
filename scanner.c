@@ -1,4 +1,5 @@
 #include "scanner.h"
+#include "array.h"
 #include "memory.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -281,10 +282,16 @@ static Token scanToken() {
   return errorToken("Unexpected character.");
 }
 
-Array getTokens(const char *source) {
+Tokens initTokens(Token *items, int size) {
+  Tokens tokens;
+  tokens.tokens = items;
+  tokens.size = size;
+  return tokens;
+}
+
+Tokens getTokens(const char *source) {
   initScanner(source);
   Array array = initArray();
-  int i = 0;
 
   for (;;) {
     Token token = scanToken();
@@ -296,7 +303,7 @@ Array getTokens(const char *source) {
       break;
     }
     pushArray(&token, &array);
-    printf("%d = %d\n", (((Token *)array.items[i])->type), token.type);
   }
-  return array;
+
+  return initTokens(array.items, array.size);
 }
