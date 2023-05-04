@@ -1,4 +1,8 @@
-#ifndef parser_h
-#define parser_h
+#ifndef PARSER_H
+#define PARSER_H
+
+#include "scanner.h"
+
+void parse(const char *source);
 
 #endif

@@ -1,5 +1,5 @@
-#ifndef test_scanner_h
-#define test_scanner_h
+#ifndef TEST_SCANNER_H
+#define TEST_SCANNER_H
 
 void testScanner();
 

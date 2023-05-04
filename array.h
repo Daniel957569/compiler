@@ -1,5 +1,5 @@
-#ifndef array_h
-#define array_h
+#ifndef ARRAY_H
+#define ARRAY_H
 
 #include "memory.h"
 #include "scanner.h"

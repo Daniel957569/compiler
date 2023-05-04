@@ -1,4 +1,4 @@
-#include "scanner.h"
+#include "parser.h"
 #include "tests/test_scanner.h"
 #include "utils/file.h"
 #include <stdio.h>
@@ -6,7 +6,7 @@
 
 static void runFile(const char *path) {
   char *source = readFile(path);
-  Tokens tokens = getTokens(source);
+  parse(source);
 }
 
 int main(int argc, const char *argv[]) {

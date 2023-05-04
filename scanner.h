@@ -1,5 +1,5 @@
-#ifndef scanner_h
-#define scanner_h
+#ifndef SCANNER_H
+#define SCANNER_H
 
 typedef enum {
   TOKEN_LEFT_PAREN,
