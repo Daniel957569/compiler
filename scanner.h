@@ -63,14 +63,6 @@ typedef struct {
   int line;
 } Token;
 
-// im a noobie so im using cheap solution cant use Array because of recursive,
-// fix later future me.
-
-typedef struct {
-  Token *tokens;
-  int size;
-} Tokens;
-
-Tokens getTokens(const char *source);
+Token *getTokens(const char *source);
 
 #endif

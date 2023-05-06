@@ -282,14 +282,7 @@ static Token scanToken() {
   return errorToken("Unexpected character.");
 }
 
-Tokens initTokens(Token *items, int size) {
-  Tokens tokens;
-  tokens.tokens = items;
-  tokens.size = size;
-  return tokens;
-}
-
-Tokens getTokens(const char *source) {
+Token *getTokens(const char *source) {
   initScanner(source);
   Array array = initArray();
 
@@ -304,6 +297,9 @@ Tokens getTokens(const char *source) {
     }
     pushArray(&token, &array);
   }
+  Token eof = makeToken(TOKEN_EOF);
 
-  return initTokens(array.items, array.size);
+  pushArray(&eof, &array);
+
+  return array.items;
 }

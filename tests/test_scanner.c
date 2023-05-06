@@ -12,20 +12,17 @@ void testScanner() {
       TOKEN_LET,       TOKEN_IDENTIFIER, TOKEN_EQUAL,       TOKEN_NUMBER,
       TOKEN_SEMICOLON, TOKEN_RIGHT_BRACE};
 
-  Tokens output = getTokens(source);
+  Token *output = getTokens(source);
 
-  if (output.size != 14) {
-    printf("wrong amount of tokens\n");
-    exit(64);
-  }
-
-  if (output.size)
-    for (int i = 0; i < output.size; i++) {
-      if (output.tokens[i].type != correctPattern[i]) {
-        printf("Wrong Token produced\n");
-        exit(64);
-      }
+  int i = 0;
+  while (output->type != TOKEN_EOF) {
+    if (output->type != correctPattern[i]) {
+      printf("Wrong Token produced\n");
+      exit(64);
     }
+    i++;
+    output++;
+  }
 
   printf("Tokens were made successfully\n");
 }
