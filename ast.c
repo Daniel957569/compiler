@@ -1,6 +1,4 @@
 #include "ast.h"
-#include <stdio.h>
-#include <stdlib.h>
 
 AstNode *ast_create_literal(int value) {
   AstNode *node = malloc(sizeof(AstNode));
@@ -24,11 +22,19 @@ AstNode *ast_create_unaryop(AstNodeType type, AstNode *operand) {
   return node;
 }
 
-double evaluate(AstNode *node) {
+AstNode *ast_create_boolean(AstNodeType type, bool boolean) {
+  AstNode *node = malloc(sizeof(AstNode));
+  node->type = type;
+  node->data.boolean = boolean;
+  return node;
+}
+
+double test_evaluate(AstNode *node) {
   double val = 0;
 
 #define evaluateNode(op)                                                       \
-  evaluate(node->data.binaryop.left) op evaluate(node->data.binaryop.right)
+  test_evaluate(node->data.binaryop.left) op test_evaluate(                    \
+      node->data.binaryop.right)
 
   switch (node->type) {
   case AST_ADD:
@@ -44,7 +50,7 @@ double evaluate(AstNode *node) {
     val += evaluateNode(/);
     break;
   case AST_NEGATE:
-    val += -1 * evaluate(node->data.unaryop.operand);
+    val += -1 * test_evaluate(node->data.unaryop.operand);
     break;
   case AST_LITERAL:
     return node->data.value;
@@ -63,7 +69,7 @@ void freeTree(AstNode *node) {
   free(node);
 }
 
-void printAst(AstNode *node, int depth) {
+void print_ast(AstNode *node, int depth) {
   if (node == NULL) {
     return;
   }
@@ -78,23 +84,42 @@ void printAst(AstNode *node, int depth) {
     break;
   case AST_ADD:
     printf("+\n");
-    printAst(node->data.binaryop.left, depth + 1);
-    printAst(node->data.binaryop.right, depth + 1);
+    print_ast(node->data.binaryop.left, depth + 1);
+    print_ast(node->data.binaryop.right, depth + 1);
     break;
   case AST_SUBTRACT:
     printf("-\n");
-    printAst(node->data.binaryop.left, depth + 1);
-    printAst(node->data.binaryop.right, depth + 1);
+    print_ast(node->data.binaryop.left, depth + 1);
+    print_ast(node->data.binaryop.right, depth + 1);
     break;
   case AST_MULTIPLY:
     printf("*\n");
-    printAst(node->data.binaryop.left, depth + 1);
-    printAst(node->data.binaryop.right, depth + 1);
+    print_ast(node->data.binaryop.left, depth + 1);
+    print_ast(node->data.binaryop.right, depth + 1);
     break;
   case AST_DIVIDE:
     printf("/\n");
-    printAst(node->data.binaryop.left, depth + 1);
-    printAst(node->data.binaryop.right, depth + 1);
+    print_ast(node->data.binaryop.left, depth + 1);
+    print_ast(node->data.binaryop.right, depth + 1);
+    break;
+  case AST_EQUAL_EQUAL:
+    printf("==\n");
+    print_ast(node->data.binaryop.left, depth + 1);
+    print_ast(node->data.binaryop.right, depth + 1);
+    break;
+  case AST_BANG_EQUAL:
+    printf("!=\n");
+    print_ast(node->data.binaryop.left, depth + 1);
+    print_ast(node->data.binaryop.right, depth + 1);
+    break;
+  case AST_GREATER:
+    printf(">\n");
+    print_ast(node->data.binaryop.left, depth + 1);
+    print_ast(node->data.binaryop.right, depth + 1);
+    break;
+  case AST_NEGATE:
+    printf("--\n");
+    print_ast(node->data.unaryop.operand, depth + 1);
     break;
   default:
     printf("Unknown node type\n");

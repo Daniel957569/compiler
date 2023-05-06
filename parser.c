@@ -1,9 +1,7 @@
 #include "parser.h"
 #include "ast.h"
+#include "common.h"
 #include "scanner.h"
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 typedef struct {
   Token *tokens;
@@ -49,7 +47,7 @@ static bool checkNext(TokenType type) {
 
 static TokenType peek() { return parser.currentToken->type; }
 
-// fix in the future. unnecessery
+// fix in the future. unnecessary
 static AstNodeType toNodeType(TokenType type) {
   switch (type) {
   case TOKEN_SLASH:
@@ -60,6 +58,27 @@ static AstNodeType toNodeType(TokenType type) {
     return AST_ADD;
   case TOKEN_MINUS:
     return AST_SUBTRACT;
+
+  case TOKEN_GREATER:
+    return AST_GREATER;
+  case TOKEN_GREATER_EQUAL:
+    return AST_GREATER_EQUAL;
+
+  case TOKEN_LESS:
+    return AST_LESS;
+  case TOKEN_LESS_EQUAL:
+    return AST_LESS_EQUAL;
+
+  case TOKEN_EQUAL:
+    return AST_EQUAL;
+  case TOKEN_EQUAL_EQUAL:
+    return AST_EQUAL_EQUAL;
+
+  case TOKEN_BANG_EQUAL:
+    return AST_BANG_EQUAL;
+  case TOKEN_BANG:
+    return AST_BANG;
+
   default:
     return AST_LITERAL;
     // error:
@@ -67,6 +86,8 @@ static AstNodeType toNodeType(TokenType type) {
 }
 
 static AstNode *expr();
+static AstNode *comparison();
+static AstNode *equality();
 
 static AstNode *number() {
   double num = strtod(parser.currentToken->start, NULL);
@@ -76,6 +97,16 @@ static AstNode *number() {
 static AstNode *primary() {
   if (check(TOKEN_NUMBER)) {
     AstNode *node = number();
+    advance();
+    return node;
+  }
+  if (match(TOKEN_TRUE)) {
+    AstNode *node = ast_create_boolean(AST_TRUE, true);
+    advance();
+    return node;
+  }
+  if (match(TOKEN_FALSE)) {
+    AstNode *node = ast_create_boolean(AST_FALSE, false);
     advance();
     return node;
   }
@@ -116,18 +147,44 @@ static AstNode *term() {
   return node;
 }
 
-static AstNode *expr() { return term(); }
+static AstNode *comparison() {
+  AstNode *node = term();
+
+  while (match(TOKEN_GREATER) || match(TOKEN_GREATER_EQUAL) ||
+         match(TOKEN_LESS) || match(TOKEN_LESS_EQUAL)) {
+    AstNodeType operator= toNodeType(previous()->type);
+    AstNode *right = term();
+    node = ast_create_binaryop(operator, node, right);
+  }
+
+  return node;
+}
+
+static AstNode *equality() {
+  AstNode *node = comparison();
+
+  while (match(TOKEN_BANG) || match(TOKEN_EQUAL_EQUAL)) {
+    AstNodeType operator= toNodeType(previous()->type);
+    AstNode *right = comparison();
+    node = ast_create_binaryop(operator, node, right);
+  }
+
+  return node;
+}
+
+static AstNode *expr() { return equality(); }
 
 double parseExpression(const char *source) {
   Token *tokens = getTokens(source);
   initParser(tokens);
   AstNode *root = expr();
-  return evaluate(root);
+  return test_evaluate(root);
 }
 
 void parse(const char *source) {
   Token *tokens = getTokens(source);
   initParser(tokens);
   AstNode *root = expr();
-  printf("value: %f\n", evaluate(root));
+  print_ast(root, 0);
+  /* printf("value: %f\n", test_evaluate(root)); */
 }
