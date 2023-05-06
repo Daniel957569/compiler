@@ -127,5 +127,6 @@ void parse(const char *source) {
   Token *tokens = getTokens(source);
   initParser(tokens);
   AstNode *root = expr();
-  printAst(root, 0);
+  /* printAst(root, 0); */
+  printf("%f\n", evaluate(root));
 }

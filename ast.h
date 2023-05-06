@@ -22,5 +22,7 @@ typedef struct AstNode {
 
 AstNode *ast_create_literal(int value);
 AstNode *ast_create_binaryop(AstNodeType type, AstNode *left, AstNode *right);
+double evaluate(AstNode *node);
+void freeTree(AstNode *node);
 void printAst(AstNode *node, int depth);
 #endif

@@ -17,6 +17,42 @@ AstNode *ast_create_binaryop(AstNodeType type, AstNode *left, AstNode *right) {
   return node;
 }
 
+double evaluate(AstNode *node) {
+  double val = 0;
+
+#define evaluateNode(op)                                                       \
+  evaluate(node->data.binaryop.left) op evaluate(node->data.binaryop.right)
+
+  switch (node->type) {
+  case AST_ADD:
+    val += evaluateNode(+);
+    break;
+  case AST_SUBTRACT:
+    val += evaluateNode(-);
+    break;
+  case AST_MULTIPLY:
+    val += evaluateNode(*);
+    break;
+  case AST_DIVIDE:
+    val += evaluateNode(/);
+    break;
+  case AST_LITERAL:
+    return node->data.value;
+    break;
+  }
+  return val;
+}
+
+void freeTree(AstNode *node) {
+  if (node == NULL) {
+    return;
+  }
+
+  freeTree(node->data.binaryop.left);
+  freeTree(node->data.binaryop.right);
+  free(node);
+}
+
 void printAst(AstNode *node, int depth) {
   if (node == NULL) {
     return;
