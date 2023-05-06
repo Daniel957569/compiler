@@ -17,6 +17,13 @@ AstNode *ast_create_binaryop(AstNodeType type, AstNode *left, AstNode *right) {
   return node;
 }
 
+AstNode *ast_create_unaryop(AstNodeType type, AstNode *operand) {
+  AstNode *node = malloc(sizeof(AstNode));
+  node->type = type;
+  node->data.unaryop.operand = operand;
+  return node;
+}
+
 double evaluate(AstNode *node) {
   double val = 0;
 
@@ -35,6 +42,9 @@ double evaluate(AstNode *node) {
     break;
   case AST_DIVIDE:
     val += evaluateNode(/);
+    break;
+  case AST_NEGATE:
+    val += -1 * evaluate(node->data.unaryop.operand);
     break;
   case AST_LITERAL:
     return node->data.value;

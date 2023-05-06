@@ -43,6 +43,9 @@ static void consume(TokenType type, const char *errorMessage) {
 }
 
 static bool check(TokenType type) { return type == parser.currentToken->type; }
+static bool checkNext(TokenType type) {
+  return type == parser.currentToken++->type;
+}
 
 static TokenType peek() { return parser.currentToken->type; }
 
@@ -70,22 +73,7 @@ static AstNode *number() {
   return ast_create_literal(num);
 }
 
-static void binaryOp() {
-  switch (peek()) {
-  case TOKEN_STAR:
-    break;
-  case TOKEN_SLASH:
-    break;
-  case TOKEN_PLUS:
-    break;
-  case TOKEN_MINUS:
-    break;
-  default:
-    break;
-  }
-}
-
-static AstNode *factor() {
+static AstNode *primary() {
   if (check(TOKEN_NUMBER)) {
     AstNode *node = number();
     advance();
@@ -99,10 +87,27 @@ static AstNode *factor() {
   return node;
 }
 
+static AstNode *factor() {
+  if (match(TOKEN_MINUS)) {
+    AstNode *node = primary();
+    node = ast_create_binaryop(AST_NEGATE, node, NULL);
+    return node;
+  }
+
+  AstNode *node = primary();
+
+  while (match(TOKEN_STAR) || match(TOKEN_SLASH)) {
+    AstNodeType operator= toNodeType(previous()->type);
+    AstNode *right = primary();
+    node = ast_create_binaryop(operator, node, right);
+  }
+  return node;
+}
+
 static AstNode *term() {
   AstNode *node = factor();
 
-  while (match(TOKEN_STAR) || match(TOKEN_SLASH)) {
+  while (match(TOKEN_MINUS) || match(TOKEN_PLUS)) {
     AstNodeType operator= toNodeType(previous()->type);
     AstNode *right = factor();
     node = ast_create_binaryop(operator, node, right);
@@ -111,22 +116,18 @@ static AstNode *term() {
   return node;
 }
 
-static AstNode *expr() {
-  AstNode *node = term();
+static AstNode *expr() { return term(); }
 
-  while (match(TOKEN_MINUS) || match(TOKEN_PLUS)) {
-    AstNodeType operator= toNodeType(previous()->type);
-    AstNode *right = term();
-    node = ast_create_binaryop(operator, node, right);
-  }
-
-  return node;
+double parseExpression(const char *source) {
+  Token *tokens = getTokens(source);
+  initParser(tokens);
+  AstNode *root = expr();
+  return evaluate(root);
 }
 
 void parse(const char *source) {
   Token *tokens = getTokens(source);
   initParser(tokens);
   AstNode *root = expr();
-  /* printAst(root, 0); */
-  printf("%f\n", evaluate(root));
+  printf("value: %f\n", evaluate(root));
 }

@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "tests/test_parser.h"
 #include "tests/test_scanner.h"
 #include "utils/file.h"
 #include <stdio.h>
@@ -12,6 +13,7 @@ static void runFile(const char *path) {
 int main(int argc, const char *argv[]) {
   if (strcmp(argv[1], "--test") == 0 && argc == 2) {
     testScanner();
+    testParser();
     return 0;
   }
 

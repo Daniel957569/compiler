@@ -4,5 +4,7 @@
 #include "scanner.h"
 
 void parse(const char *source);
+// temparory remove later
+double parseExpression(const char *source);
 
 #endif
