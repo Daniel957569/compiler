@@ -8,6 +8,8 @@ typedef struct {
   Token *currentToken;
   AstNode *ast;
   int current;
+  bool inPanicMode;
+  bool hadError;
 } Parser;
 
 Parser parser;
@@ -18,9 +20,38 @@ static void initParser(Token *tokens) {
   parser.current = 0;
 }
 
+static void errorAt(Token *token, const char *message) {
+  if (parser.inPanicMode)
+    return;
+  parser.inPanicMode = true;
+  fprintf(stderr, "[line %d] Error", token->line);
+
+  if (token->type == TOKEN_EOF) {
+    fprintf(stderr, " at end");
+  } else if (token->type == TOKEN_ERROR) {
+    // Nothing.
+  } else {
+    fprintf(stderr, " at '%.*s'", token->length, token->start);
+  }
+  fprintf(stderr, ": %s\n", message);
+  parser.hadError = true;
+}
+
+static void error(const char *message) {
+  errorAt(parser.currentToken, message);
+}
+
+static void errorAtCurrent(const char *message) {
+  errorAt(parser.currentToken, message);
+}
+
 static void advance() {
   parser.current++;
   parser.currentToken++;
+
+  if (parser.currentToken->type == TOKEN_ERROR) {
+    errorAtCurrent(parser.currentToken->start);
+  }
 }
 
 static Token *previous() { return parser.currentToken - 1; }
@@ -30,6 +61,7 @@ static bool match(TokenType type) {
     advance();
     return true;
   }
+
   return false;
 }
 
@@ -37,10 +69,12 @@ static void consume(TokenType type, const char *errorMessage) {
   if (match(type)) {
     return;
   }
-  // add error later
+
+  errorAtCurrent(errorMessage);
 }
 
 static bool check(TokenType type) { return type == parser.currentToken->type; }
+
 static bool checkNext(TokenType type) {
   return type == parser.currentToken++->type;
 }
@@ -85,6 +119,29 @@ static AstNodeType toNodeType(TokenType type) {
   }
 }
 
+static void synchronize() {
+  parser.inPanicMode = false;
+
+  while (parser.currentToken->type != TOKEN_EOF) {
+    if (previous()->type == TOKEN_SEMICOLON)
+      return;
+    switch (parser.currentToken->type) {
+    case TOKEN_FUN:
+    case TOKEN_LET:
+    case TOKEN_FOR:
+    case TOKEN_IF:
+    case TOKEN_WHILE:
+    case TOKEN_PRINT:
+    case TOKEN_RETURN:
+      return;
+
+    default:; // Do nothing.
+    }
+
+    advance();
+  }
+}
+
 static AstNode *expr();
 static AstNode *comparison();
 static AstNode *equality();
@@ -111,25 +168,30 @@ static AstNode *primary() {
     return node;
   }
 
-  consume(TOKEN_LEFT_PAREN, "Expect left parent at factor.");
+  consume(TOKEN_LEFT_PAREN, "Expected ( at Expression.");
   AstNode *node = expr();
-  consume(TOKEN_RIGHT_PAREN, "Expect right parent at factor.");
+  consume(TOKEN_RIGHT_PAREN, "Expected ) after Expression.");
 
   return node;
 }
 
-static AstNode *factor() {
-  if (match(TOKEN_MINUS)) {
+static AstNode *unary() {
+  if (match(TOKEN_MINUS) || match(TOKEN_BANG)) {
+    AstNodeType unaryop = toNodeType(previous()->type);
     AstNode *node = primary();
-    node = ast_create_binaryop(AST_NEGATE, node, NULL);
+    node = ast_create_binaryop(unaryop, node, NULL);
     return node;
   }
 
-  AstNode *node = primary();
+  return primary();
+}
+
+static AstNode *factor() {
+  AstNode *node = unary();
 
   while (match(TOKEN_STAR) || match(TOKEN_SLASH)) {
     AstNodeType operator= toNodeType(previous()->type);
-    AstNode *right = primary();
+    AstNode *right = unary();
     node = ast_create_binaryop(operator, node, right);
   }
   return node;

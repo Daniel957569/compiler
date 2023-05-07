@@ -52,6 +52,8 @@ double test_evaluate(AstNode *node) {
   case AST_NEGATE:
     val += -1 * test_evaluate(node->data.unaryop.operand);
     break;
+  case AST_EQUAL_EQUAL:
+
   case AST_LITERAL:
     return node->data.value;
     break;
@@ -102,6 +104,11 @@ void print_ast(AstNode *node, int depth) {
     print_ast(node->data.binaryop.left, depth + 1);
     print_ast(node->data.binaryop.right, depth + 1);
     break;
+  case AST_EQUAL:
+    printf("=\n");
+    print_ast(node->data.binaryop.left, depth + 1);
+    print_ast(node->data.binaryop.right, depth + 1);
+    break;
   case AST_EQUAL_EQUAL:
     printf("==\n");
     print_ast(node->data.binaryop.left, depth + 1);
@@ -117,8 +124,27 @@ void print_ast(AstNode *node, int depth) {
     print_ast(node->data.binaryop.left, depth + 1);
     print_ast(node->data.binaryop.right, depth + 1);
     break;
+  case AST_GREATER_EQUAL:
+    printf(">=\n");
+    print_ast(node->data.binaryop.left, depth + 1);
+    print_ast(node->data.binaryop.right, depth + 1);
+    break;
+  case AST_LESS:
+    printf("<\n");
+    print_ast(node->data.binaryop.left, depth + 1);
+    print_ast(node->data.binaryop.right, depth + 1);
+    break;
+  case AST_LESS_EQUAL:
+    printf("<=\n");
+    print_ast(node->data.binaryop.left, depth + 1);
+    print_ast(node->data.binaryop.right, depth + 1);
+    break;
   case AST_NEGATE:
     printf("--\n");
+    print_ast(node->data.unaryop.operand, depth + 1);
+    break;
+  case AST_BANG:
+    printf("!\n");
     print_ast(node->data.unaryop.operand, depth + 1);
     break;
   default:
