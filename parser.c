@@ -2,6 +2,8 @@
 #include "ast.h"
 #include "common.h"
 #include "scanner.h"
+#include <stdlib.h>
+#include <string.h>
 
 typedef struct {
   Token *tokens;
@@ -55,6 +57,8 @@ static void advance() {
 }
 
 static Token *previous() { return parser.currentToken - 1; }
+
+static Token *current() { return parser.currentToken; }
 
 static bool match(TokenType type) {
   if (type == parser.currentToken->type) {
@@ -142,9 +146,18 @@ static void synchronize() {
   }
 }
 
+char *parseName(Token *token) {
+  char *result = malloc(sizeof(char) * token->length);
+  strncpy(result, token->start, token->length);
+  result[token->length] = '\0';
+  return result;
+}
+
 static AstNode *expr();
 static AstNode *comparison();
 static AstNode *equality();
+static AstNode *assignment();
+static AstNode *statement();
 
 static AstNode *number() {
   double num = strtod(parser.currentToken->start, NULL);
@@ -234,7 +247,48 @@ static AstNode *equality() {
   return node;
 }
 
-static AstNode *expr() { return equality(); }
+static AstNode *assignment() {
+  AstNode *node;
+
+  if (match(TOKEN_IDENTIFIER)) {
+    const char *varName = parseName(previous());
+    consume(TOKEN_EQUAL, "Expected '=' after IDENTIFIER");
+    node = equality();
+    return ast_create_var_assign(AST_ASSIGN, varName, node);
+  }
+
+  return equality();
+}
+
+static AstNode *expr() { return assignment(); }
+
+static AstNode *statement() {
+  AstNode *node = expr();
+  consume(TOKEN_SEMICOLON, "Expected ';' after Expression.");
+  return node;
+}
+
+static AstNode *let_declaration() {
+  const char *varName = parseName(current());
+  consume(TOKEN_IDENTIFIER, "Expected IDENTIFIER after 'let'");
+
+  AstNode *node;
+  if (match(TOKEN_EQUAL)) {
+    node = expr();
+  } else {
+    node = NULL;
+  }
+  consume(TOKEN_SEMICOLON, "Expected ';' after Expression");
+
+  return ast_create_let_decl(AST_LET_DECL, varName, node);
+}
+
+static AstNode *declaration() {
+  if (match(TOKEN_LET)) {
+    return let_declaration();
+  }
+  return statement();
+}
 
 double parseExpression(const char *source) {
   Token *tokens = getTokens(source);
@@ -246,7 +300,14 @@ double parseExpression(const char *source) {
 void parse(const char *source) {
   Token *tokens = getTokens(source);
   initParser(tokens);
-  AstNode *root = expr();
-  print_ast(root, 0);
+  AstNode *program = ast_create_program_node();
+
+  while (peek() != TOKEN_EOF) {
+    ast_push_program_node(program, declaration());
+  }
+
+  for (int i = 0; i < program->data.program_node.size; i++) {
+    print_ast(program->data.program_node.elements[i], 0);
+  }
   /* printf("value: %f\n", test_evaluate(root)); */
 }

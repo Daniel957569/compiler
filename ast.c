@@ -1,4 +1,6 @@
 #include "ast.h"
+#include "memory.h"
+#include <stdio.h>
 
 AstNode *ast_create_literal(int value) {
   AstNode *node = malloc(sizeof(AstNode));
@@ -27,6 +29,43 @@ AstNode *ast_create_boolean(AstNodeType type, bool boolean) {
   node->type = type;
   node->data.boolean = boolean;
   return node;
+}
+
+AstNode *ast_create_let_decl(AstNodeType type, const char *name,
+                             AstNode *value) {
+  AstNode *node = malloc(sizeof(AstNode));
+  node->type = type;
+  node->data.let_decl.value = value;
+  node->data.let_decl.name = name;
+  return node;
+}
+
+AstNode *ast_create_var_assign(AstNodeType type, const char *name,
+                               AstNode *value) {
+  AstNode *node = malloc(sizeof(AstNode));
+  node->type = type;
+  node->data.let_decl.value = value;
+  node->data.let_decl.name = name;
+  return node;
+}
+
+AstNode *ast_create_program_node() {
+  AstNode *node = malloc(sizeof(AstNode));
+  node->data.program_node.capacity = 8;
+  node->data.program_node.size = 0;
+  node->data.program_node.elements = ALLOCATE(AstNode *, 8);
+  return node;
+}
+
+void ast_push_program_node(AstNode *program, AstNode *node) {
+  if (AS_PROGRAM_CAPACITY(program) * 0.75 < AS_PROGRAM_SIZE(program)) {
+    program->data.program_node.elements = GROW_ARRAY(
+        AstNode *, AS_PROGRAM_ELEMENTS(program), AS_PROGRAM_CAPACITY(program),
+        AS_PROGRAM_CAPACITY(program) * 2);
+    program->data.program_node.capacity *= 2;
+  }
+  program->data.program_node.elements[AS_PROGRAM_SIZE(program)] = node;
+  program->data.program_node.size++;
 }
 
 double test_evaluate(AstNode *node) {
@@ -81,6 +120,12 @@ void print_ast(AstNode *node, int depth) {
   }
 
   switch (node->type) {
+  case AST_TRUE:
+    printf("True\n");
+    break;
+  case AST_FALSE:
+    printf("False\n");
+    break;
   case AST_LITERAL:
     printf("%f\n", node->data.value);
     break;
@@ -146,6 +191,16 @@ void print_ast(AstNode *node, int depth) {
   case AST_BANG:
     printf("!\n");
     print_ast(node->data.unaryop.operand, depth + 1);
+    break;
+  case AST_LET_DECL:
+    printf("= : declaration\n");
+    printf("  %s\n", node->data.let_decl.name);
+    print_ast(node->data.let_decl.value, depth + 1);
+    break;
+  case AST_ASSIGN:
+    printf("= : assign\n");
+    printf("  %s\n", node->data.let_decl.name);
+    print_ast(node->data.let_decl.value, depth + 1);
     break;
   default:
     printf("Unknown node type\n");
