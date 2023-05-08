@@ -4,9 +4,9 @@
 #include "common.h"
 #include <stddef.h>
 
-#define AS_PROGRAM_SIZE(program) (program)->data.program_node.size
-#define AS_PROGRAM_CAPACITY(program) (program)->data.program_node.capacity
-#define AS_PROGRAM_ELEMENTS(program) (program)->data.program_node.elements
+#define AS_LIST_SIZE(program) (program)->data.declaration_list.size
+#define AS_LIST_CAPACITY(program) (program)->data.declaration_list.capacity
+#define AS_LIST_ELEMENTS(program) (program)->data.declaration_list.elements
 
 typedef enum {
   AST_LITERAL,
@@ -36,7 +36,10 @@ typedef enum {
   AST_LET_DECL,
   AST_ASSIGN,
 
+  AST_IF_STMT,
+
   AST_PROGRAM,
+  AST_BLOCK,
 } AstNodeType;
 
 typedef struct AstNode {
@@ -60,10 +63,15 @@ typedef struct AstNode {
       struct AstNode *value;
     } let_decl;
     struct {
+      struct AstNode *condition;
+      struct AstNode *then_body;
+      struct AstNode *else_body;
+    } if_stmt;
+    struct { // block, program_node
       struct AstNode **elements;
       size_t size;
       size_t capacity;
-    } program_node;
+    } declaration_list;
   } data;
 } AstNode;
 
@@ -73,12 +81,14 @@ AstNode *ast_create_unaryop(AstNodeType type, AstNode *operand);
 AstNode *ast_create_boolean(AstNodeType type, bool boolean);
 AstNode *ast_create_let_decl(AstNodeType type, const char *name,
                              AstNode *value);
+AstNode *ast_create_if_stmt(AstNode *condition, AstNode *then_body,
+                            AstNode *else_body);
 
 AstNode *ast_create_var_assign(AstNodeType type, const char *name,
                                AstNode *value);
 
-AstNode *ast_create_program_node();
-void ast_push_program_node(AstNode *program, AstNode *node);
+AstNode *ast_create_declaration_list(AstNodeType type);
+void ast_push_list_node(AstNode *program, AstNode *node);
 
 double test_evaluate(AstNode *node);
 void free_tree(AstNode *node);

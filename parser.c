@@ -155,6 +155,7 @@ char *parseName(Token *token) {
 
 static AstNode *expr();
 static AstNode *comparison();
+static AstNode *declaration();
 static AstNode *equality();
 static AstNode *assignment();
 static AstNode *statement();
@@ -181,10 +182,9 @@ static AstNode *primary() {
     return node;
   }
 
-  consume(TOKEN_LEFT_PAREN, "Expected ( at Expression.");
-  AstNode *node = expr();
-  consume(TOKEN_RIGHT_PAREN, "Expected ) after Expression.");
-
+  consume(TOKEN_LEFT_PAREN, "Expected '(' before Expression.");
+  AstNode *node = equality();
+  consume(TOKEN_RIGHT_PAREN, "Expected ')' after Expression.");
   return node;
 }
 
@@ -248,12 +248,10 @@ static AstNode *equality() {
 }
 
 static AstNode *assignment() {
-  AstNode *node;
-
   if (match(TOKEN_IDENTIFIER)) {
     const char *varName = parseName(previous());
     consume(TOKEN_EQUAL, "Expected '=' after IDENTIFIER");
-    node = equality();
+    AstNode *node = equality();
     return ast_create_var_assign(AST_ASSIGN, varName, node);
   }
 
@@ -262,9 +260,43 @@ static AstNode *assignment() {
 
 static AstNode *expr() { return assignment(); }
 
-static AstNode *statement() {
+static AstNode *expr_statment() {
   AstNode *node = expr();
   consume(TOKEN_SEMICOLON, "Expected ';' after Expression.");
+  return node;
+}
+
+static AstNode *block() {
+  AstNode *block = ast_create_declaration_list(AST_BLOCK);
+  while (!check(TOKEN_RIGHT_BRACE)) {
+    ast_push_list_node(block, declaration());
+  }
+
+  return block;
+}
+
+static AstNode *if_statement() {
+  AstNode *condition = equality();
+
+  consume(TOKEN_LEFT_BRACE, "Expect '{' after if condition");
+  AstNode *then_body = block();
+  consume(TOKEN_RIGHT_BRACE, "Expected '}' after if block");
+
+  AstNode *else_body = NULL;
+  if (match(TOKEN_ELSE)) {
+    consume(TOKEN_LEFT_BRACE, "Expected '{' after condition");
+    else_body = block();
+    consume(TOKEN_LEFT_BRACE, "Expected '}' after else block");
+  }
+
+  return ast_create_if_stmt(condition, then_body, else_body);
+}
+
+static AstNode *statement() {
+  if (match(TOKEN_IF)) {
+    return if_statement();
+  }
+  AstNode *node = expr_statment();
   return node;
 }
 
@@ -300,14 +332,12 @@ double parseExpression(const char *source) {
 void parse(const char *source) {
   Token *tokens = getTokens(source);
   initParser(tokens);
-  AstNode *program = ast_create_program_node();
+  AstNode *program = ast_create_declaration_list(AST_PROGRAM);
 
   while (peek() != TOKEN_EOF) {
-    ast_push_program_node(program, declaration());
+    ast_push_list_node(program, declaration());
   }
 
-  for (int i = 0; i < program->data.program_node.size; i++) {
-    print_ast(program->data.program_node.elements[i], 0);
-  }
+  print_ast(program, 0);
   /* printf("value: %f\n", test_evaluate(root)); */
 }

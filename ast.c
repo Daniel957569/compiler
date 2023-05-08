@@ -49,23 +49,35 @@ AstNode *ast_create_var_assign(AstNodeType type, const char *name,
   return node;
 }
 
-AstNode *ast_create_program_node() {
+AstNode *ast_create_if_stmt(AstNode *condition, AstNode *then_body,
+                            AstNode *else_body) {
   AstNode *node = malloc(sizeof(AstNode));
-  node->data.program_node.capacity = 8;
-  node->data.program_node.size = 0;
-  node->data.program_node.elements = ALLOCATE(AstNode *, 8);
+  node->type = AST_IF_STMT;
+  node->data.if_stmt.condition = condition;
+  node->data.if_stmt.then_body = then_body;
+  node->data.if_stmt.else_body = else_body;
   return node;
 }
 
-void ast_push_program_node(AstNode *program, AstNode *node) {
-  if (AS_PROGRAM_CAPACITY(program) * 0.75 < AS_PROGRAM_SIZE(program)) {
-    program->data.program_node.elements = GROW_ARRAY(
-        AstNode *, AS_PROGRAM_ELEMENTS(program), AS_PROGRAM_CAPACITY(program),
-        AS_PROGRAM_CAPACITY(program) * 2);
-    program->data.program_node.capacity *= 2;
+AstNode *ast_create_declaration_list(AstNodeType type) {
+  AstNode *node = malloc(sizeof(AstNode));
+  node->type = type;
+  node->data.declaration_list.capacity = 8;
+  node->data.declaration_list.size = 0;
+  node->data.declaration_list.elements = ALLOCATE(AstNode *, 8);
+  return node;
+}
+
+void ast_push_list_node(AstNode *program, AstNode *node) {
+  if (AS_LIST_CAPACITY(program) * 0.75 < AS_LIST_SIZE(program)) {
+    program->data.declaration_list.elements =
+        GROW_ARRAY(AstNode *, AS_LIST_ELEMENTS(program),
+                   AS_LIST_CAPACITY(program), AS_LIST_CAPACITY(program) * 2);
+    program->data.declaration_list.capacity *= 2;
   }
-  program->data.program_node.elements[AS_PROGRAM_SIZE(program)] = node;
-  program->data.program_node.size++;
+
+  program->data.declaration_list.elements[AS_LIST_SIZE(program)] = node;
+  program->data.declaration_list.size++;
 }
 
 double test_evaluate(AstNode *node) {
@@ -108,6 +120,13 @@ void freeTree(AstNode *node) {
   freeTree(node->data.binaryop.left);
   freeTree(node->data.binaryop.right);
   free(node);
+}
+
+static void print(const char *string, int depth) {
+  for (int i = 0; i < depth; i++) {
+    printf("  ");
+  }
+  printf("%s\n", string);
 }
 
 void print_ast(AstNode *node, int depth) {
@@ -193,14 +212,41 @@ void print_ast(AstNode *node, int depth) {
     print_ast(node->data.unaryop.operand, depth + 1);
     break;
   case AST_LET_DECL:
-    printf("= : declaration\n");
-    printf("  %s\n", node->data.let_decl.name);
-    print_ast(node->data.let_decl.value, depth + 1);
+    printf("Declaration\n");
+    print(node->data.let_decl.name, depth + 1);
+    print_ast(node->data.let_decl.value, depth + 2);
     break;
   case AST_ASSIGN:
-    printf("= : assign\n");
-    printf("  %s\n", node->data.let_decl.name);
-    print_ast(node->data.let_decl.value, depth + 1);
+    printf("Assign\n");
+    print(node->data.let_decl.name, depth + 1);
+    print_ast(node->data.let_decl.value, depth + 2);
+    break;
+
+  case AST_IF_STMT:
+    printf("IF_Stmt\n");
+
+    print("Condition", depth + 1);
+    print_ast(node->data.if_stmt.condition, depth + 2);
+
+    print("then", depth + 1);
+    print_ast(node->data.if_stmt.then_body, depth + 2);
+
+    if (node->data.if_stmt.else_body) {
+      print("Else", depth + 1);
+      print_ast(node->data.if_stmt.else_body, depth + 2);
+    }
+    break;
+  case AST_BLOCK:
+    printf("Block\n");
+    for (int i = 0; i < node->data.declaration_list.size; i++) {
+      print_ast(node->data.declaration_list.elements[i], depth + 1);
+    }
+    break;
+  case AST_PROGRAM:
+    printf("Program\n");
+    for (int i = 0; i < node->data.declaration_list.size; i++) {
+      print_ast(node->data.declaration_list.elements[i], depth + 1);
+    }
     break;
   default:
     printf("Unknown node type\n");
