@@ -5,6 +5,6 @@
 
 void parse(const char *source);
 // temparory remove later
-double parseExpression(const char *source);
+/* double parseExpression(const char *source); */
 
 #endif

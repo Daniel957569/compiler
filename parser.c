@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "array.h"
 #include "ast.h"
 #include "common.h"
 #include "scanner.h"
@@ -8,7 +9,7 @@
 typedef struct {
   Token *tokens;
   Token *currentToken;
-  AstNode *ast;
+  AstNode *current_block;
   int current;
   bool inPanicMode;
   bool hadError;
@@ -16,10 +17,13 @@ typedef struct {
 
 Parser parser;
 
-static void initParser(Token *tokens) {
+static void initParser(Token *tokens, AstNode *block) {
   parser.tokens = tokens;
+  parser.current_block = block;
   parser.currentToken = tokens;
   parser.current = 0;
+  parser.hadError = false;
+  parser.inPanicMode = false;
 }
 
 static void errorAt(Token *token, const char *message) {
@@ -113,7 +117,7 @@ static AstNodeType toNodeType(TokenType type) {
     return AST_EQUAL_EQUAL;
 
   case TOKEN_BANG_EQUAL:
-    return AST_BANG_EQUAL;
+    return AST_NOT_EQUAL;
   case TOKEN_BANG:
     return AST_BANG;
 
@@ -146,11 +150,32 @@ static void synchronize() {
   }
 }
 
-char *parseName(Token *token) {
+static char *parseName(Token *token) {
   char *result = malloc(sizeof(char) * token->length);
   strncpy(result, token->start, token->length);
   result[token->length] = '\0';
   return result;
+}
+
+static Type variable_type() {
+  TokenType type = peek();
+  advance();
+  switch (type) {
+  case TOKEN_BOOLEAN_TYPE:
+    return TYPE_BOOLEAN;
+  case TOKEN_FLOAT_TYPE:
+    return TYPE_FLOAT;
+  case TOKEN_STRING_TYPE:
+    return TYPE_STRING;
+  case TOKEN_INTEGER_TYPE:
+    return TYPE_INTEGER;
+  case TOKEN_VOID_TYPE:
+    return TYPE_VOID;
+  default:
+    parser.inPanicMode = true;
+    errorAtCurrent("Expected valid variable type.");
+    return TYPE_VOID;
+  }
 }
 
 static AstNode *expr();
@@ -163,6 +188,12 @@ static AstNode *statement();
 static AstNode *number() {
   double num = strtod(parser.currentToken->start, NULL);
   return ast_create_literal(num);
+}
+
+static AstNode *arguments() {
+  AstNode *node = expr();
+  if (match(TOKEN_COMMA)) {
+  }
 }
 
 static AstNode *primary() {
@@ -186,6 +217,15 @@ static AstNode *primary() {
   AstNode *node = equality();
   consume(TOKEN_RIGHT_PAREN, "Expected ')' after Expression.");
   return node;
+}
+
+static AstNode *call() {
+  AstNode *node = primary();
+  if (match(TOKEN_LEFT_PAREN)) {
+  }
+
+  // add for struct later:  if (match(TOKEN_DOT))
+  return primary();
 }
 
 static AstNode *unary() {
@@ -252,7 +292,8 @@ static AstNode *assignment() {
     const char *varName = parseName(previous());
     consume(TOKEN_EQUAL, "Expected '=' after IDENTIFIER");
     AstNode *node = equality();
-    return ast_create_var_assign(AST_ASSIGN, varName, node);
+    return ast_create_variable_stmt(AST_VAR_ASSIGNMENT, TYPE_VOID, varName,
+                                    node);
   }
 
   return equality();
@@ -267,9 +308,11 @@ static AstNode *expr_statment() {
 }
 
 static AstNode *block() {
-  AstNode *block = ast_create_declaration_list(AST_BLOCK);
-  while (!check(TOKEN_RIGHT_BRACE)) {
-    ast_push_list_node(block, declaration());
+  AstNode *block = ast_create_block(AST_BLOCK, parser.current_block);
+  parser.current_block = block;
+
+  while (!match(TOKEN_RIGHT_BRACE)) {
+    push_ast_array(block->data.block.elements, declaration());
   }
 
   return block;
@@ -286,15 +329,25 @@ static AstNode *if_statement() {
   if (match(TOKEN_ELSE)) {
     consume(TOKEN_LEFT_BRACE, "Expected '{' after condition");
     else_body = block();
-    consume(TOKEN_LEFT_BRACE, "Expected '}' after else block");
   }
 
   return ast_create_if_stmt(condition, then_body, else_body);
 }
 
+static AstNode *while_statement() {
+  AstNode *condition = equality();
+
+  consume(TOKEN_LEFT_BRACE, "Expect '{' after if condition");
+  AstNode *then_body = block();
+
+  return ast_create_while_stmt(condition, then_body);
+}
+
 static AstNode *statement() {
   if (match(TOKEN_IF)) {
     return if_statement();
+  } else if (match(TOKEN_WHILE)) {
+    return while_statement();
   }
   AstNode *node = expr_statment();
   return node;
@@ -304,6 +357,10 @@ static AstNode *let_declaration() {
   const char *varName = parseName(current());
   consume(TOKEN_IDENTIFIER, "Expected IDENTIFIER after 'let'");
 
+  consume(TOKEN_COLONS, "Expected ':' after after variable declaration.");
+  // add struct later on
+  Type type = variable_type();
+
   AstNode *node;
   if (match(TOKEN_EQUAL)) {
     node = expr();
@@ -312,32 +369,46 @@ static AstNode *let_declaration() {
   }
   consume(TOKEN_SEMICOLON, "Expected ';' after Expression");
 
-  return ast_create_let_decl(AST_LET_DECL, varName, node);
+  return ast_create_variable_stmt(AST_LET_DECLARATION, type, varName, node);
+}
+
+static AstNode *function_delclaration() {
+  // fun foo(): integer {}
+  const char *varName = parseName(current());
+  consume(TOKEN_IDENTIFIER, "Expected IDENTIFIER after 'fun'");
+
+  consume(TOKEN_LEFT_PAREN, "Expected '(' before function arguments");
+  // add parameters
+  consume(TOKEN_RIGHT_PAREN, "Expected ')' after function arguments");
+
+  consume(TOKEN_SEMICOLON, "Expected ':' after Parent for type declaration");
+  Type type = variable_type();
+
+  consume(TOKEN_LEFT_BRACE, "Expect '{' after if condition");
+  AstNode *fun_block = block();
+
+  return ast_create_function_declaration(type, varName, fun_block);
 }
 
 static AstNode *declaration() {
   if (match(TOKEN_LET)) {
     return let_declaration();
+  } else if (match(TOKEN_FUN)) {
+    return function_delclaration();
   }
   return statement();
 }
 
-double parseExpression(const char *source) {
-  Token *tokens = getTokens(source);
-  initParser(tokens);
-  AstNode *root = expr();
-  return test_evaluate(root);
-}
+double parseExpression(const char *source) { return 0.0; }
 
 void parse(const char *source) {
   Token *tokens = getTokens(source);
-  initParser(tokens);
-  AstNode *program = ast_create_declaration_list(AST_PROGRAM);
+  AstNode *program = ast_create_block(AST_PROGRAM, NULL);
+  initParser(tokens, program);
 
   while (peek() != TOKEN_EOF) {
-    ast_push_list_node(program, declaration());
+    push_ast_array(program->data.block.elements, declaration());
   }
 
   print_ast(program, 0);
-  /* printf("value: %f\n", test_evaluate(root)); */
 }

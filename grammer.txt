@@ -3,7 +3,7 @@ declaration    → funDecl
                | statement ;
 
 funDecl        → "fun" function ;
-letDecl        → "let" IDENTIFIER ( "=" expression )? ";" ;
+letDecl        → "let" IDENTIFIER ":" type( "=" expression )? ";" ;
 
 statement      → exprStmt
                | forStmt
@@ -40,6 +40,8 @@ primary        → "true" | "false" | "nil" | "this"
                               | "super" "." IDENTIFIER ;
 
 
-function       → IDENTIFIER "(" parameters? ")" block ;
+
+type           → BOOLEAN | INT | FLOAT | STRING | IDENTIFIER;
+function       → IDENTIFIER "(" parameters? ")" ":" type block ;
 parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
 arguments      → expression ( "," expression )* ;
