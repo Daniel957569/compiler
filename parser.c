@@ -190,10 +190,34 @@ static AstNode *number() {
   return ast_create_literal(num);
 }
 
-static AstNode *arguments() {
-  AstNode *node = expr();
-  if (match(TOKEN_COMMA)) {
+static AstArray *arguments() {
+  // arguments      → expression ( "," expression )* ;
+  AstArray *arguments_list = init_ast_array();
+  push_ast_array(arguments_list, expr());
+  advance();
+
+  while (TOKEN_COMMA) {
+    push_ast_array(arguments_list, expr());
+    advance();
   }
+
+  return arguments_list;
+}
+
+static StringArray *parameters() {
+  // parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
+  StringArray *parameters_array = init_string_array();
+  if (check(TOKEN_IDENTIFIER)) {
+    push_string_array(parameters_array, parseName(current()));
+    advance();
+
+    while (match(TOKEN_COMMA)) {
+      push_string_array(parameters_array, parseName(current()));
+      advance();
+    }
+  }
+
+  return parameters_array;
 }
 
 static AstNode *primary() {
@@ -204,17 +228,22 @@ static AstNode *primary() {
   }
   if (match(TOKEN_TRUE)) {
     AstNode *node = ast_create_boolean(AST_TRUE, true);
-    advance();
     return node;
   }
   if (match(TOKEN_FALSE)) {
     AstNode *node = ast_create_boolean(AST_FALSE, false);
-    advance();
     return node;
+  }
+  if (match(TOKEN_STRING)) {
+    AstNode *node = ast_create_string(AST_STRING, parseName(previous()));
+    return node;
+  }
+  if (match(TOKEN_IDENTIFIER)) {
+    return ast_create_identifier_refrence(parseName(previous()));
   }
 
   consume(TOKEN_LEFT_PAREN, "Expected '(' before Expression.");
-  AstNode *node = equality();
+  AstNode *node = expr();
   consume(TOKEN_RIGHT_PAREN, "Expected ')' after Expression.");
   return node;
 }
@@ -291,7 +320,9 @@ static AstNode *assignment() {
   if (match(TOKEN_IDENTIFIER)) {
     const char *varName = parseName(previous());
     consume(TOKEN_EQUAL, "Expected '=' after IDENTIFIER");
-    AstNode *node = equality();
+    AstNode *node = expr();
+    consume(TOKEN_SEMICOLON, "Expected ';' after Expression");
+
     return ast_create_variable_stmt(AST_VAR_ASSIGNMENT, TYPE_VOID, varName,
                                     node);
   }
@@ -303,7 +334,7 @@ static AstNode *expr() { return assignment(); }
 
 static AstNode *expr_statment() {
   AstNode *node = expr();
-  consume(TOKEN_SEMICOLON, "Expected ';' after Expression.");
+  /* consume(TOKEN_SEMICOLON, "Expected ';' after Expression."); */
   return node;
 }
 
@@ -312,6 +343,11 @@ static AstNode *block() {
   parser.current_block = block;
 
   while (!match(TOKEN_RIGHT_BRACE)) {
+    if (peek() == TOKEN_EOF) {
+      // exiting because it has eaten the entire program tokens.
+      errorAt(current(), "block was not closed with '}'.");
+      exit(64);
+    }
     push_ast_array(block->data.block.elements, declaration());
   }
 
@@ -323,7 +359,6 @@ static AstNode *if_statement() {
 
   consume(TOKEN_LEFT_BRACE, "Expect '{' after if condition");
   AstNode *then_body = block();
-  consume(TOKEN_RIGHT_BRACE, "Expected '}' after if block");
 
   AstNode *else_body = NULL;
   if (match(TOKEN_ELSE)) {
@@ -378,19 +413,23 @@ static AstNode *function_delclaration() {
   consume(TOKEN_IDENTIFIER, "Expected IDENTIFIER after 'fun'");
 
   consume(TOKEN_LEFT_PAREN, "Expected '(' before function arguments");
-  // add parameters
+  StringArray *parameters_array = parameters();
   consume(TOKEN_RIGHT_PAREN, "Expected ')' after function arguments");
 
-  consume(TOKEN_SEMICOLON, "Expected ':' after Parent for type declaration");
+  consume(TOKEN_COLONS, "Expected ':' after Parent for type declaration");
   Type type = variable_type();
 
   consume(TOKEN_LEFT_BRACE, "Expect '{' after if condition");
   AstNode *fun_block = block();
 
-  return ast_create_function_declaration(type, varName, fun_block);
+  return ast_create_function_declaration(type, varName, parameters_array,
+                                         fun_block);
 }
 
 static AstNode *declaration() {
+  if (parser.inPanicMode)
+    synchronize();
+
   if (match(TOKEN_LET)) {
     return let_declaration();
   } else if (match(TOKEN_FUN)) {

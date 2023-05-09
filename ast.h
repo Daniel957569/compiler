@@ -11,6 +11,9 @@
 
 typedef enum {
   AST_LITERAL,
+  AST_STRING,
+
+  AST_IDENTIFIER,
 
   AST_TRUE,
   AST_FALSE,
@@ -60,9 +63,11 @@ typedef struct AstNode {
   AstNodeType type;
   Type data_type;
   union {
-    double value; // AST_LITERAL
-    bool boolean; // AST_TRUE AST_FALSE
-    struct {      // AST_ADD, AST_SUBTRACT, AST_MULTIPLY, AST_DIVIDE ...
+    double value;              // AST_LITERAL
+    bool boolean;              // AST_TRUE AST_FALSE
+    char *str;                 // AST_STRING
+    char *identifier_refrence; // AST_IDENTIFIER
+    struct { // AST_ADD, AST_SUBTRACT, AST_MULTIPLY, AST_DIVIDE ...
       struct AstNode *left;
       struct AstNode *right;
     } binaryop;
@@ -72,11 +77,7 @@ typedef struct AstNode {
     struct {
       const char *name;
       struct AstNode *value;
-    } var_assign;
-    struct {
-      const char *name;
-      struct AstNode *value;
-    } let_decl;
+    } variable;
     struct {
       struct AstNode *condition;
       struct AstNode *then_body;
@@ -89,7 +90,7 @@ typedef struct AstNode {
     struct {
       const char *name;
       // parameters, later on
-      AstArray *parameters;
+      StringArray *parameters;
       struct AstNode *body;
     } function_decl;
     struct { // block, program_node
@@ -103,12 +104,15 @@ AstNode *ast_create_literal(int value);
 AstNode *ast_create_binaryop(AstNodeType type, AstNode *left, AstNode *right);
 AstNode *ast_create_unaryop(AstNodeType type, AstNode *operand);
 AstNode *ast_create_boolean(AstNodeType type, bool boolean);
+AstNode *ast_create_string(AstNodeType type, char *str);
+AstNode *ast_create_identifier_refrence(char *str);
 AstNode *ast_create_variable_stmt(AstNodeType type, Type data_type,
                                   const char *name, AstNode *value);
 AstNode *ast_create_if_stmt(AstNode *condition, AstNode *then_body,
                             AstNode *else_body);
 AstNode *ast_create_while_stmt(AstNode *condition, AstNode *then_body);
 AstNode *ast_create_function_declaration(Type type, const char *function_name,
+                                         StringArray *parameters,
                                          AstNode *function_body);
 
 AstNode *ast_create_block(AstNodeType type, AstNode *parent_block);

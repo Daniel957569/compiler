@@ -114,7 +114,7 @@ static TokenType identifierType() {
       case 'r':
         return checkKeyword(2, 3, "eak", TOKEN_BREAK);
       case 'o':
-        return checkKeyword(2, 3, "olean", TOKEN_BOOLEAN_TYPE);
+        return checkKeyword(2, 5, "olean", TOKEN_BOOLEAN_TYPE);
       }
     }
   case 'c':
@@ -167,10 +167,8 @@ static TokenType identifierType() {
       switch (scanner.start[1]) {
       case 'w':
         return checkKeyword(2, 4, "itch", TOKEN_SWITCH);
-      case 'u':
-        return checkKeyword(2, 3, "per", TOKEN_SUPER);
       case 't':
-        return checkKeyword(2, 4, "ring", TOKEN_SUPER);
+        return checkKeyword(2, 4, "ring", TOKEN_STRING_TYPE);
       }
     }
   case 'w':

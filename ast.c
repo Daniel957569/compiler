@@ -37,13 +37,29 @@ AstNode *ast_create_boolean(AstNodeType type, bool boolean) {
   return node;
 }
 
+AstNode *ast_create_string(AstNodeType type, char *str) {
+  AstNode *node = malloc(sizeof(AstNode));
+  node->data_type = TYPE_STRING;
+  node->type = type;
+  node->data.str = str;
+  return node;
+}
+
+AstNode *ast_create_identifier_refrence(char *str) {
+  AstNode *node = malloc(sizeof(AstNode));
+  node->data_type = TYPE_VOID;
+  node->type = AST_IDENTIFIER;
+  node->data.str = str;
+  return node;
+}
+
 AstNode *ast_create_variable_stmt(AstNodeType type, Type data_type,
                                   const char *name, AstNode *value) {
   AstNode *node = malloc(sizeof(AstNode));
   node->data_type = data_type;
   node->type = type;
-  node->data.let_decl.value = value;
-  node->data.let_decl.name = name;
+  node->data.variable.value = value;
+  node->data.variable.name = name;
   return node;
 }
 
@@ -69,10 +85,12 @@ AstNode *ast_create_while_stmt(AstNode *condition, AstNode *then_body) {
 
 // add arguments
 AstNode *ast_create_function_declaration(Type type, const char *function_name,
+                                         StringArray *parameters,
                                          AstNode *function_body) {
   AstNode *node = malloc(sizeof(AstNode));
   node->data_type = type;
   node->type = AST_FUNCTION;
+  node->data.function_decl.parameters = parameters;
   node->data.function_decl.name = function_name;
   node->data.function_decl.body = function_body;
   return node;
@@ -144,6 +162,12 @@ static char *type_to_string(Type type) {
   }
 }
 
+static void print_parameters(StringArray *array, int depth) {
+  for (int i = 0; i < array->size; i++) {
+    printf("%s, ", array->items[i]);
+  }
+}
+
 static void print(const char *string, int depth) {
   for (int i = 0; i < depth; i++) {
     printf("  ");
@@ -174,6 +198,9 @@ void print_ast(AstNode *node, int depth) {
     printf("%f\n", node->data.value);
     break;
 
+  case AST_STRING:
+    printf("%s\n", node->data.str);
+    break;
   case AST_ADD:
     printf("+\n");
     print_ast(node->data.binaryop.left, depth + 1);
@@ -253,24 +280,24 @@ void print_ast(AstNode *node, int depth) {
   case AST_LET_DECLARATION:
     printf("Declaration\n");
     char str1[100];
-    sprintf(str1, "%s : %s", node->data.let_decl.name,
+    sprintf(str1, "%s: %s", node->data.variable.name,
             type_to_string(node->data_type));
 
     print(str1, depth + 1);
-    print_ast(node->data.let_decl.value, depth + 2);
+    print_ast(node->data.variable.value, depth + 2);
     break;
 
   case AST_VAR_ASSIGNMENT:
     printf("Assign\n");
     char str2[100];
-    sprintf(str2, "%s : %s", node->data.let_decl.name,
+    sprintf(str2, "%s: %s", node->data.variable.name,
             type_to_string(node->data_type));
     print(str2, depth + 1);
-    print_ast(node->data.let_decl.value, depth + 2);
+    print_ast(node->data.variable.value, depth + 2);
     break;
 
   case AST_IF_STATEMNET:
-    printf("IF_STATEMENT\n");
+    printf("IF_Statement\n");
 
     print("Condition", depth + 1);
     print_ast(node->data.if_stmt.condition, depth + 2);
@@ -279,7 +306,7 @@ void print_ast(AstNode *node, int depth) {
     print_ast(node->data.if_stmt.then_body, depth + 2);
 
     if (node->data.if_stmt.else_body) {
-      print("Else", depth + 1);
+      print("else", depth + 1);
       print_ast(node->data.if_stmt.else_body, depth + 2);
     }
     break;
@@ -293,6 +320,13 @@ void print_ast(AstNode *node, int depth) {
     print("then", depth + 1);
     print_ast(node->data.if_stmt.then_body, depth + 2);
 
+    break;
+
+  case AST_FUNCTION:
+    printf("Function: ");
+    print_parameters(node->data.function_decl.parameters, depth);
+    printf(": %s\n", type_to_string(node->data_type));
+    print_ast(node->data.function_decl.body, depth + 1);
     break;
 
   case AST_BLOCK:
