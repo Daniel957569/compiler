@@ -1,5 +1,5 @@
 #include "scanner.h"
-#include "array.h"
+#include "./utils/array.h"
 #include "memory.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -307,7 +307,7 @@ static Token scanToken() {
 
 Token *getTokens(const char *source) {
   initScanner(source);
-  Array array = initArray();
+  TokenArray array = init_token_array();
 
   for (;;) {
     Token token = scanToken();
@@ -318,11 +318,11 @@ Token *getTokens(const char *source) {
       printf("%s\n", token.start);
       break;
     }
-    pushArray(&token, &array);
+    push_token_array(&token, &array);
   }
   Token eof = makeToken(TOKEN_EOF);
 
-  pushArray(&eof, &array);
+  push_token_array(&eof, &array);
 
   return array.items;
 }

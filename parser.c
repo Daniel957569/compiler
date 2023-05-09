@@ -1,5 +1,5 @@
 #include "parser.h"
-#include "array.h"
+#include "./utils/array.h"
 #include "ast.h"
 #include "common.h"
 #include "scanner.h"
@@ -84,7 +84,7 @@ static void consume(TokenType type, const char *errorMessage) {
 static bool check(TokenType type) { return type == parser.currentToken->type; }
 
 static bool checkNext(TokenType type) {
-  return type == parser.currentToken++->type;
+  return type == (parser.currentToken + 1)->type;
 }
 
 static TokenType peek() { return parser.currentToken->type; }
@@ -193,13 +193,16 @@ static AstNode *number() {
 static AstArray *arguments() {
   // arguments      → expression ( "," expression )* ;
   AstArray *arguments_list = init_ast_array();
-  push_ast_array(arguments_list, expr());
-  advance();
 
-  while (TOKEN_COMMA) {
+  if (!check(TOKEN_RIGHT_PAREN)) {
     push_ast_array(arguments_list, expr());
-    advance();
+
+    while (match(TOKEN_COMMA)) {
+      push_ast_array(arguments_list, expr());
+    }
   }
+
+  consume(TOKEN_RIGHT_PAREN, "Expected ')' after function arguments");
 
   return arguments_list;
 }
@@ -249,8 +252,36 @@ static AstNode *primary() {
 }
 
 static AstNode *call() {
-  AstNode *node = primary();
-  if (match(TOKEN_LEFT_PAREN)) {
+  if (check(TOKEN_IDENTIFIER)) {
+    char *calle = parseName(current());
+
+    // assignment
+    if (checkNext(TOKEN_EQUAL)) {
+      // change later, twice to get up to the right of =
+      advance();
+      advance();
+
+      AstNode *node = expr();
+      return ast_create_variable_stmt(AST_VAR_ASSIGNMENT, TYPE_VOID, calle,
+                                      node);
+    }
+
+    // function callling
+    if (checkNext(TOKEN_LEFT_PAREN)) {
+      // change later
+      advance();
+      advance();
+
+      AstArray *args = arguments();
+      consume(TOKEN_SEMICOLON, "Expected ';' after calling a function");
+
+      return ast_create_function_call(calle, args);
+    }
+
+    // add struct props
+    if (checkNext(TOKEN_DOT)) {
+      printf("TODO: access struct props\n");
+    }
   }
 
   // add for struct later:  if (match(TOKEN_DOT))
@@ -260,12 +291,12 @@ static AstNode *call() {
 static AstNode *unary() {
   if (match(TOKEN_MINUS) || match(TOKEN_BANG)) {
     AstNodeType unaryop = toNodeType(previous()->type);
-    AstNode *node = primary();
+    AstNode *node = call();
     node = ast_create_binaryop(unaryop, node, NULL);
     return node;
   }
 
-  return primary();
+  return call();
 }
 
 static AstNode *factor() {
@@ -316,26 +347,28 @@ static AstNode *equality() {
   return node;
 }
 
-static AstNode *assignment() {
-  if (match(TOKEN_IDENTIFIER)) {
-    const char *varName = parseName(previous());
-    consume(TOKEN_EQUAL, "Expected '=' after IDENTIFIER");
-    AstNode *node = expr();
-    consume(TOKEN_SEMICOLON, "Expected ';' after Expression");
-
-    return ast_create_variable_stmt(AST_VAR_ASSIGNMENT, TYPE_VOID, varName,
-                                    node);
-  }
-
-  return equality();
-}
-
-static AstNode *expr() { return assignment(); }
+static AstNode *expr() { return equality(); }
 
 static AstNode *expr_statment() {
   AstNode *node = expr();
-  /* consume(TOKEN_SEMICOLON, "Expected ';' after Expression."); */
+  consume(TOKEN_SEMICOLON, "Expected ';' after Expression.");
   return node;
+}
+
+static AstNode *assignment() {
+  if (match(TOKEN_LEFT_PAREN)) {
+    char *calle = parseName(previous());
+
+    AstArray *args = arguments();
+    consume(TOKEN_SEMICOLON, "Expected ';' after calling a function");
+    return ast_create_function_call(calle, args);
+  }
+  const char *varName = parseName(previous());
+  consume(TOKEN_EQUAL, "Expected '=' after IDENTIFIER");
+  AstNode *node = expr();
+  consume(TOKEN_SEMICOLON, "Expected ';' after Expression");
+
+  return ast_create_variable_stmt(AST_VAR_ASSIGNMENT, TYPE_VOID, varName, node);
 }
 
 static AstNode *block() {
@@ -384,6 +417,7 @@ static AstNode *statement() {
   } else if (match(TOKEN_WHILE)) {
     return while_statement();
   }
+
   AstNode *node = expr_statment();
   return node;
 }

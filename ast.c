@@ -1,5 +1,4 @@
 #include "ast.h"
-#include "array.h"
 #include "memory.h"
 #include <stdio.h>
 
@@ -83,7 +82,6 @@ AstNode *ast_create_while_stmt(AstNode *condition, AstNode *then_body) {
   return node;
 }
 
-// add arguments
 AstNode *ast_create_function_declaration(Type type, const char *function_name,
                                          StringArray *parameters,
                                          AstNode *function_body) {
@@ -93,6 +91,16 @@ AstNode *ast_create_function_declaration(Type type, const char *function_name,
   node->data.function_decl.parameters = parameters;
   node->data.function_decl.name = function_name;
   node->data.function_decl.body = function_body;
+  return node;
+}
+
+AstNode *ast_create_function_call(const char *function_name,
+                                  AstArray *arguments) {
+  AstNode *node = malloc(sizeof(AstNode));
+  node->data_type = TYPE_VOID;
+  node->type = AST_FUNCTION_CALL;
+  node->data.function_call.arguments = arguments;
+  node->data.function_decl.name = function_name;
   return node;
 }
 
@@ -165,6 +173,12 @@ static char *type_to_string(Type type) {
 static void print_parameters(StringArray *array, int depth) {
   for (int i = 0; i < array->size; i++) {
     printf("%s, ", array->items[i]);
+  }
+}
+
+static void print_arguments(AstArray *array, int depth) {
+  for (int i = 0; i < array->size; i++) {
+    print_ast(array->items[i], depth + 1);
   }
 }
 
@@ -277,6 +291,10 @@ void print_ast(AstNode *node, int depth) {
     print_ast(node->data.unaryop.operand, depth + 1);
     break;
 
+  case AST_IDENTIFIER:
+    printf("%s\n", node->data.variable.name);
+    break;
+
   case AST_LET_DECLARATION:
     printf("Declaration\n");
     char str1[100];
@@ -329,6 +347,13 @@ void print_ast(AstNode *node, int depth) {
     print_ast(node->data.function_decl.body, depth + 1);
     break;
 
+  case AST_FUNCTION_CALL:
+    printf("Call Function: ");
+    printf("%s\n", node->data.function_call.name);
+    print("Arguments: ", depth + 1);
+    print_arguments(node->data.function_call.arguments, depth + 2);
+    break;
+
   case AST_BLOCK:
     printf("Block\n");
     for (int i = 0; i < node->data.block.elements->size; i++) {
@@ -344,7 +369,6 @@ void print_ast(AstNode *node, int depth) {
     break;
 
   default:
-    printf("Unknown node type\n");
     break;
   }
 }

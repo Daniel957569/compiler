@@ -2,8 +2,8 @@
 #define ARRAY_H
 
 /* #include "ast.h" */
-#include "memory.h"
-#include "scanner.h"
+#include "../memory.h"
+#include "../scanner.h"
 
 struct AstNode; // forward declaration, lsp throws recursive error, only fix i
 // can think of.
@@ -12,7 +12,7 @@ typedef struct {
   int size;
   int capacity;
   Token *items;
-} Array;
+} TokenArray;
 
 typedef struct {
   int size;
@@ -26,9 +26,9 @@ typedef struct {
   char **items;
 } StringArray;
 
-Array initArray();
-void pushArray(Token *item, Array *arr);
-void freeArray(Array *arr);
+TokenArray init_token_array();
+void push_token_array(Token *item, TokenArray *arr);
+void free_token_array(TokenArray *arr);
 
 AstArray *init_ast_array();
 void push_ast_array(AstArray *arr, struct AstNode *item);

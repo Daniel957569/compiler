@@ -1,7 +1,7 @@
 #ifndef AST_H
 #define AST_H
 
-#include "array.h"
+#include "./utils/array.h"
 #include "common.h"
 #include <stddef.h>
 
@@ -45,6 +45,7 @@ typedef enum {
   AST_WHILE_STATEMENT,
 
   AST_FUNCTION,
+  AST_FUNCTION_CALL,
 
   AST_PROGRAM,
   AST_BLOCK,
@@ -89,10 +90,13 @@ typedef struct AstNode {
     } while_stmt;
     struct {
       const char *name;
-      // parameters, later on
       StringArray *parameters;
       struct AstNode *body;
     } function_decl;
+    struct {
+      const char *name;
+      AstArray *arguments;
+    } function_call;
     struct { // block, program_node
       struct AstNode *parent_block;
       AstArray *elements;
@@ -114,6 +118,8 @@ AstNode *ast_create_while_stmt(AstNode *condition, AstNode *then_body);
 AstNode *ast_create_function_declaration(Type type, const char *function_name,
                                          StringArray *parameters,
                                          AstNode *function_body);
+AstNode *ast_create_function_call(const char *function_name,
+                                  AstArray *arguments);
 
 AstNode *ast_create_block(AstNodeType type, AstNode *parent_block);
 

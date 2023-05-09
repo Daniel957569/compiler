@@ -1,6 +1,5 @@
 #include "array.h"
-#include "ast.h"
-#include "memory.h"
+#include "../ast.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,15 +7,15 @@
 #define GROWTH_FACTOR 0.75
 #define INITIAL_CAPACITY 10
 
-Array initArray() {
-  Array array;
+TokenArray init_token_array() {
+  TokenArray array;
   array.capacity = INITIAL_CAPACITY;
   array.size = 0;
   array.items = ALLOCATE(Token, INITIAL_CAPACITY);
   return array;
 }
 
-void pushArray(Token *item, Array *arr) {
+void push_token_array(Token *item, TokenArray *arr) {
   if (arr->capacity * GROWTH_FACTOR < arr->size) {
     arr->items =
         GROW_ARRAY(Token, arr->items, arr->capacity, arr->capacity * 2);
@@ -25,6 +24,8 @@ void pushArray(Token *item, Array *arr) {
   arr->items[arr->size] = *item;
   arr->size++;
 }
+
+void free_token_array(TokenArray *arr) { free(arr->items); }
 
 AstArray *init_ast_array() {
   AstArray *array = malloc(sizeof(AstArray));
