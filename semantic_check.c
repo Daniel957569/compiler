@@ -33,7 +33,8 @@ static Environment *init_environment() {
   return env;
 }
 
-static Symbol *init_symbol(AstNode *value, SymbolType type, Type data_type) {
+static Symbol *init_symbol(AstNode *value, SymbolType type,
+                           DataType data_type) {
   Symbol *symbol = malloc(sizeof(Symbol));
   symbol->scope = current_scope;
   symbol->value = value;
@@ -50,138 +51,143 @@ static void semantic_check(AstNode *node) {
 
   switch (node->type) {
     // skip literals
-  case AST_LITERAL:
+  case AST_INTEGER:
+  case AST_FLOAT:
   case AST_STRING:
   case AST_TRUE:
   case AST_FALSE:
     break;
 
   case AST_ADD:
-    if (node->data.binaryop.left->data_type != TYPE_INTEGER ||
-        node->data.binaryop.right->data_type != TYPE_INTEGER) {
-      errorAt(node->line, "+", "can only add two integers.");
-    }
-
     semantic_check(node->data.binaryop.left);
     semantic_check(node->data.binaryop.right);
+
+    if (node->data.binaryop.left->data_type != TYPE_INTEGER &&
+            node->data.binaryop.right->data_type != TYPE_INTEGER ||
+        node->data.binaryop.left->data_type != TYPE_FLOAT &&
+            node->data.binaryop.right->data_type != TYPE_FLOAT) {
+      errorAt(node->line, "+", "can only add two integers/floats.");
+    }
+    node->data_type = TYPE_INTEGER;
+
     break;
   case AST_SUBTRACT:
-
-    if (node->data.binaryop.left->data_type != TYPE_INTEGER ||
-        node->data.binaryop.right->data_type != TYPE_INTEGER) {
-
-      errorAt(node->line, "-", "Can only subtract two integers.");
-    }
-
     semantic_check(node->data.binaryop.left);
     semantic_check(node->data.binaryop.right);
+
+    if (node->data.binaryop.left->data_type != TYPE_INTEGER &&
+            node->data.binaryop.right->data_type != TYPE_INTEGER ||
+        node->data.binaryop.left->data_type) {
+      errorAt(node->line, "-", "Can only subtract two integers/floats.");
+    }
+
     break;
 
   case AST_MULTIPLY:
-    if (node->data.binaryop.left->data_type != TYPE_INTEGER ||
-        node->data.binaryop.right->data_type != TYPE_INTEGER) {
-
-      errorAt(node->line, "*", "Can only mulitpy two integers.");
-    }
-
     semantic_check(node->data.binaryop.left);
     semantic_check(node->data.binaryop.right);
+
+    if (node->data.binaryop.left->data_type != TYPE_INTEGER &&
+            node->data.binaryop.right->data_type != TYPE_INTEGER ||
+        node->data.binaryop.left->data_type) {
+      errorAt(node->line, "*", "Can only mulitpy two integers/floats.");
+    }
+
     break;
 
   case AST_DIVIDE:
-    if (node->data.binaryop.left->data_type != TYPE_INTEGER ||
-        node->data.binaryop.right->data_type != TYPE_INTEGER) {
-
-      errorAt(node->line, "/", "Can only divide two integers.");
-    }
-
     semantic_check(node->data.binaryop.left);
     semantic_check(node->data.binaryop.right);
+
+    if (node->data.binaryop.left->data_type != TYPE_INTEGER &&
+            node->data.binaryop.right->data_type != TYPE_INTEGER ||
+        node->data.binaryop.left->data_type) {
+      errorAt(node->line, "/", "Can only divide two integers/floats.");
+    }
+
     break;
 
   case AST_EQUAL_EQUAL:
+    semantic_check(node->data.binaryop.left);
+    semantic_check(node->data.binaryop.right);
+
     if (node->data.binaryop.left->data_type ==
         node->data.binaryop.right->data_type) {
-
       errorAt(node->line,
               "==", "Can only compare two values of the same type.");
     }
 
-    semantic_check(node->data.binaryop.left);
-    semantic_check(node->data.binaryop.right);
     break;
 
   case AST_NOT_EQUAL:
+    semantic_check(node->data.binaryop.left);
+    semantic_check(node->data.binaryop.right);
+
     if (node->data.binaryop.left->data_type ==
         node->data.binaryop.right->data_type) {
-
       errorAt(node->line,
               "!=", "Can only compare two values of the same type.");
     }
 
-    semantic_check(node->data.binaryop.left);
-    semantic_check(node->data.binaryop.right);
     break;
 
   case AST_GREATER:
+    semantic_check(node->data.binaryop.left);
+    semantic_check(node->data.binaryop.right);
+
     if (node->data.binaryop.left->data_type ==
         node->data.binaryop.right->data_type) {
-
       errorAt(node->line, ">", "Can only compare two values of the same type.");
     }
 
-    semantic_check(node->data.binaryop.left);
-    semantic_check(node->data.binaryop.right);
     break;
 
   case AST_GREATER_EQUAL:
+    semantic_check(node->data.binaryop.left);
+    semantic_check(node->data.binaryop.right);
+
     if (node->data.binaryop.left->data_type ==
         node->data.binaryop.right->data_type) {
-
       errorAt(node->line,
               ">=", "Can only compare two values of the same type.");
     }
 
-    semantic_check(node->data.binaryop.left);
-    semantic_check(node->data.binaryop.right);
     break;
 
   case AST_LESS:
+    semantic_check(node->data.binaryop.left);
+    semantic_check(node->data.binaryop.right);
+
     if (node->data.binaryop.left->data_type ==
         node->data.binaryop.right->data_type) {
-
       errorAt(node->line,
               "<=", "Can only compare two values of the same type.");
     }
 
-    semantic_check(node->data.binaryop.left);
-    semantic_check(node->data.binaryop.right);
     break;
 
   case AST_LESS_EQUAL:
+    semantic_check(node->data.binaryop.left);
+    semantic_check(node->data.binaryop.right);
+
     if (node->data.binaryop.left->data_type ==
         node->data.binaryop.right->data_type) {
-
       errorAt(node->line,
               "<=", "Can only compare two values of the same type.");
     }
 
-    semantic_check(node->data.binaryop.left);
-    semantic_check(node->data.binaryop.right);
     break;
 
   case AST_NEGATE:
-    if (node->data.unaryop.operand->data_type != TYPE_INTEGER) {
+    semantic_check(node->data.unaryop.operand);
 
+    if (node->data.unaryop.operand->data_type != TYPE_INTEGER) {
       errorAt(node->line, "-", "Can only negate intger type.");
     }
-
-    semantic_check(node->data.unaryop.operand);
     break;
 
   case AST_BANG:
     if (node->data.unaryop.operand->data_type != TYPE_BOOLEAN) {
-
       errorAt(node->line, "!", "Can only logical negate boolean type.");
     }
 
@@ -217,6 +223,7 @@ static void semantic_check(AstNode *node) {
     }
 
     semantic_check(node->data.variable.value);
+    printf("%d %d\n", node->data.variable.value->type, node->data_type);
     if (node->data_type != node->data.variable.value->data_type) {
       errorAt(node->data.variable.value->line, node->data.variable.name,
               "Cannot assign a value that is not equal to type definition");

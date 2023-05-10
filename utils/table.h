@@ -20,7 +20,7 @@ typedef struct Symbol {
   AstNode *value;
   int scope;
   SymbolType type;
-  Type data_type;
+  DataType data_type;
 } Symbol;
 
 typedef struct {

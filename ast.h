@@ -11,7 +11,8 @@
 #define AS_LIST_ELEMENTS(program) (program)->data.block.elements
 
 typedef enum {
-  AST_LITERAL,
+  AST_INTEGER,
+  AST_FLOAT,
   AST_STRING,
 
   AST_IDENTIFIER_REFRENCE,
@@ -60,20 +61,21 @@ typedef enum {
   TYPE_INTEGER,
   TYPE_FLOAT,
   TYPE_STRING
-} Type;
+} DataType;
 
 typedef struct Identifier {
-  Type type;
+  DataType type;
   char *name;
   uint32_t hash;
 } Identifier;
 
 typedef struct AstNode {
   AstNodeType type;
-  Type data_type;
+  DataType data_type;
   int line;
   union {
-    double value;                    // AST_LITERAL
+    float float_val;                 // AST_FLOAT
+    int integer_val;                 // AST_NUMBER
     bool boolean;                    // AST_TRUE AST_FALSE
     const char *str;                 // AST_STRING
     const char *identifier_refrence; // AST_IDENTIFIER
@@ -118,22 +120,24 @@ typedef struct AstNode {
   } data;
 } AstNode;
 
-AstNode *ast_create_literal(int value, int line);
+AstNode *ast_create_number(double value, int line);
+AstNode *ast_create_float(float value, int line);
 AstNode *ast_create_binaryop(AstNodeType type, AstNode *left, AstNode *right,
                              int line);
 AstNode *ast_create_unaryop(AstNodeType type, AstNode *operand, int line);
 AstNode *ast_create_boolean(AstNodeType type, bool boolean, int line);
 AstNode *ast_create_string(const char *str, int line);
 AstNode *ast_create_identifier_refrence(const char *str, int line);
-AstNode *ast_create_variable_stmt(AstNodeType type, Type data_type,
+AstNode *ast_create_variable_stmt(AstNodeType type, DataType data_type,
                                   const char *name, int line, AstNode *value);
 AstNode *ast_create_if_statement(AstNode *condition, AstNode *then_body,
                                  AstNode *else_body, int line);
 AstNode *ast_create_while_statement(AstNode *condition, AstNode *then_body,
                                     int line);
-AstNode *ast_create_return_statement(Type type, AstNode *value, int line);
+AstNode *ast_create_return_statement(DataType type, AstNode *value, int line);
 AstNode *ast_create_continue_statement(int line);
-AstNode *ast_create_function_declaration(Type type, const char *function_name,
+AstNode *ast_create_function_declaration(DataType type,
+                                         const char *function_name,
                                          IdentifierArray *parameters,
                                          AstNode *function_body, int line);
 AstNode *ast_create_function_call(const char *function_name,
@@ -141,7 +145,7 @@ AstNode *ast_create_function_call(const char *function_name,
 
 AstNode *ast_create_block(AstNodeType type, int line);
 
-Identifier *create_identifier(char *name, Type type);
+Identifier *create_identifier(char *name, DataType type);
 
 double test_evaluate(AstNode *node);
 void free_tree(AstNode *node);

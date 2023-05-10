@@ -225,6 +225,7 @@ static Token number() {
     while (isDigit(peek())) {
       advance();
     }
+    return makeToken(TOKEN_FLOAT);
   }
 
   return makeToken(TOKEN_NUMBER);

@@ -121,7 +121,7 @@ static AstNodeType toNodeType(TokenType type) {
     return AST_BANG;
 
   default:
-    return AST_LITERAL;
+    return AST_INTEGER;
     // error:
   }
 }
@@ -156,7 +156,7 @@ static char *parseName(Token *token) {
   return result;
 }
 
-static Type variable_type() {
+static DataType variable_type() {
   TokenType type = peek();
   advance();
   switch (type) {
@@ -185,7 +185,12 @@ static AstNode *statement();
 
 static AstNode *number() {
   double num = strtod(parser.currentToken->start, NULL);
-  return ast_create_literal(num, current()->line);
+  return ast_create_number(num, current()->line);
+}
+
+static AstNode *float_num() {
+  float num = strtod(parser.currentToken->start, NULL);
+  return ast_create_float(num, current()->line);
 }
 
 static AstArray *arguments() {
@@ -213,7 +218,7 @@ static IdentifierArray *parameters() {
       char *parameter = parseName(current());
       advance();
       consume(TOKEN_COLONS, "Expected ':' after parameter to define type");
-      Type parameter_type = variable_type();
+      DataType parameter_type = variable_type();
       push_identifier_array(parameters_array,
                             create_identifier(parameter, parameter_type));
     } while (match(TOKEN_COMMA));
@@ -225,6 +230,11 @@ static IdentifierArray *parameters() {
 static AstNode *primary() {
   if (check(TOKEN_NUMBER)) {
     AstNode *node = number();
+    advance();
+    return node;
+  }
+  if (check(TOKEN_FLOAT)) {
+    AstNode *node = float_num();
     advance();
     return node;
   }
@@ -443,7 +453,7 @@ static AstNode *let_declaration() {
 
   consume(TOKEN_COLONS, "Expected ':' after after variable declaration.");
   // add struct later on
-  Type type = variable_type();
+  DataType type = variable_type();
 
   AstNode *node;
   if (match(TOKEN_EQUAL)) {
@@ -467,7 +477,7 @@ static AstNode *function_delclaration() {
   consume(TOKEN_RIGHT_PAREN, "Expected ')' after function arguments");
 
   consume(TOKEN_COLONS, "Expected ':' after Parent for type declaration");
-  Type type = variable_type();
+  DataType type = variable_type();
 
   consume(TOKEN_LEFT_BRACE, "Expect '{' after if condition");
   AstNode *fun_block = block();

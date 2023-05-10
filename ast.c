@@ -13,12 +13,21 @@ static uint32_t hashString(const char *key, int length) {
   return hash;
 }
 
-AstNode *ast_create_literal(int value, int line) {
+AstNode *ast_create_number(double value, int line) {
   AstNode *node = malloc(sizeof(AstNode));
   node->line = line;
   node->data_type = TYPE_INTEGER;
-  node->type = AST_LITERAL;
-  node->data.value = value;
+  node->type = AST_INTEGER;
+  node->data.integer_val = (int)value;
+  return node;
+}
+
+AstNode *ast_create_float(float value, int line) {
+  AstNode *node = malloc(sizeof(AstNode));
+  node->line = line;
+  node->data_type = TYPE_FLOAT;
+  node->type = AST_FLOAT;
+  node->data.float_val = value;
   return node;
 }
 
@@ -72,7 +81,7 @@ AstNode *ast_create_identifier_refrence(const char *str, int line) {
   return node;
 }
 
-AstNode *ast_create_variable_stmt(AstNodeType type, Type data_type,
+AstNode *ast_create_variable_stmt(AstNodeType type, DataType data_type,
                                   const char *name, int line, AstNode *value) {
   AstNode *node = malloc(sizeof(AstNode));
   node->line = line;
@@ -107,7 +116,7 @@ AstNode *ast_create_while_statement(AstNode *condition, AstNode *then_body,
   return node;
 }
 
-AstNode *ast_create_return_statement(Type type, AstNode *value, int line) {
+AstNode *ast_create_return_statement(DataType type, AstNode *value, int line) {
   AstNode *node = malloc(sizeof(AstNode));
   node->line = line;
   node->data_type = type;
@@ -123,7 +132,8 @@ AstNode *ast_create_continue_statement(int line) {
   return node;
 }
 
-AstNode *ast_create_function_declaration(Type type, const char *function_name,
+AstNode *ast_create_function_declaration(DataType type,
+                                         const char *function_name,
                                          IdentifierArray *parameters,
                                          AstNode *function_body, int line) {
   AstNode *node = malloc(sizeof(AstNode));
@@ -160,7 +170,7 @@ AstNode *ast_create_block(AstNodeType type, int line) {
   return node;
 }
 
-Identifier *create_identifier(char *name, Type type) {
+Identifier *create_identifier(char *name, DataType type) {
   Identifier *identifier = malloc(sizeof(Identifier));
   identifier->name = name;
   identifier->type = type;
@@ -193,8 +203,8 @@ double test_evaluate(AstNode *node) {
     break;
   case AST_EQUAL_EQUAL:
 
-  case AST_LITERAL:
-    return node->data.value;
+  case AST_INTEGER:
+    return node->data.integer_val;
     break;
   }
   return val;
@@ -206,21 +216,15 @@ void free_tree(AstNode *node) {
   }
 
   switch (node->type) {
-  case AST_LITERAL:
-    free(node);
-    break;
+  case AST_INTEGER:
+  case AST_FLOAT:
   case AST_STRING:
-    free(node);
-    break;
   case AST_IDENTIFIER_REFRENCE:
-    free(node);
-    break;
   case AST_TRUE:
-    free(node);
-    break;
   case AST_FALSE:
     free(node);
     break;
+
   case AST_ADD:
   case AST_SUBTRACT:
   case AST_MULTIPLY:
@@ -289,7 +293,7 @@ void free_tree(AstNode *node) {
   }
 }
 
-static char *type_to_string(Type type) {
+static char *type_to_string(DataType type) {
   switch (type) {
   case TYPE_BOOLEAN:
     return "boolean";
@@ -344,8 +348,11 @@ void print_ast(AstNode *node, int depth) {
     printf("False\n");
     break;
 
-  case AST_LITERAL:
-    printf("%f\n", node->data.value);
+  case AST_INTEGER:
+    printf("%d\n", node->data.integer_val);
+    break;
+  case AST_FLOAT:
+    printf("%f\n", node->data.float_val);
     break;
 
   case AST_STRING:
