@@ -62,7 +62,7 @@ StringArray *init_string_array() {
   return array;
 }
 
-void push_string_array(StringArray *arr, char *str) {
+void push_string_array(StringArray *arr, const char *str) {
   if (arr->capacity * GROWTH_FACTOR < arr->size) {
     arr->capacity *= 2;
     arr->items = realloc(arr->items, arr->capacity * sizeof(char *));
@@ -74,6 +74,32 @@ void push_string_array(StringArray *arr, char *str) {
 }
 
 void free_string_array(StringArray *arr) {
+  for (int i = 0; i < arr->size; i++) {
+    free(arr->items[i]);
+  }
+
+  free(arr->items);
+}
+
+EnvironmentArray *init_environment_array() {
+  EnvironmentArray *array = malloc(sizeof(EnvironmentArray));
+  array->items = ALLOCATE(struct Environment *, 8);
+  array->size = 0;
+  array->capacity = 8;
+  return array;
+}
+void push_environment_array(EnvironmentArray *arr, struct Environment *env) {
+  if (arr->capacity * GROWTH_FACTOR < arr->size) {
+    arr->items = GROW_ARRAY(struct Environment *, arr->items, arr->capacity,
+                            arr->capacity * 1.5);
+    arr->capacity *= 1.5;
+  }
+
+  arr->items[arr->size] = env;
+  arr->size++;
+}
+
+void free_environment_array(EnvironmentArray *arr) {
   for (int i = 0; i < arr->size; i++) {
     free(arr->items[i]);
   }

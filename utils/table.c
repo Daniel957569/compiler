@@ -1,26 +1,25 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../memory.h"
 #include "table.h"
 
 #define TABLE_MAX_LOAD 0.75
 
-void initTable(Table *table) {
+void init_table(Table *table) {
   table->count = 0;
   table->capacity = 0;
   table->entries = NULL;
 }
 
-static Entry *findEntry(Entry *entries, int capacity, char *key,
-                        u_int32_t hash) {
+static Entry *find_entry(Entry *entries, int capacity, const char *key,
+                         u_int32_t hash) {
   uint32_t index = hash % capacity;
   Entry *tombstone = NULL;
 
   for (;;) {
     Entry *entry = &entries[index];
     if (entry->key == NULL) {
-      if (entry->is_tombstone) {
+      if (!entry->is_tombstone) {
         // empty entry.
         return tombstone != NULL ? tombstone : entry;
       } else {
@@ -37,8 +36,8 @@ static Entry *findEntry(Entry *entries, int capacity, char *key,
   }
 }
 
-static void adjustCapacity(Table *table, int capacity, char *key,
-                           u_int32_t hash) {
+static void adjust_capacity(Table *table, int capacity, const char *key,
+                            u_int32_t hash) {
   Entry *entries = ALLOCATE(Entry, capacity);
   for (int i = 0; i < capacity; i++) {
     entries[i].key = NULL;
@@ -52,7 +51,7 @@ static void adjustCapacity(Table *table, int capacity, char *key,
     if (entry->key == NULL)
       continue;
 
-    Entry *dest = findEntry(entries, capacity, key, hash);
+    Entry *dest = find_entry(entries, capacity, key, hash);
     dest->key = entry->key;
     dest->value = entry->value;
     dest->hash = entry->hash;
@@ -65,15 +64,35 @@ static void adjustCapacity(Table *table, int capacity, char *key,
   table->capacity = capacity;
 }
 
-bool tableSet(Table *table, char *key, u_int32_t hash, AstNode *value) {
+bool table_get(Table *table, const char *key, u_int32_t hash,
+               struct Symbol *value) {
+  if (table->count == 0)
+    return false;
+
+  Entry *entry = find_entry(table->entries, table->capacity, key, hash);
+  if (entry->key == NULL)
+    return false;
+
+  value = entry->value;
+  return true;
+}
+
+bool table_set(Table *table, const char *key, u_int32_t hash,
+               struct Symbol *value) {
   if (table->count + 1 > table->capacity * TABLE_MAX_LOAD) {
     int capacity = GROW_CAPACITY(table->capacity);
-    adjustCapacity(table, capacity, key, hash);
+    adjust_capacity(table, capacity, key, hash);
   }
 
-  Entry *entry = findEntry(table->entries, table->capacity, key, hash);
+  Entry *entry = find_entry(table->entries, table->capacity, key, hash);
   bool isNewKey = entry->key == NULL;
-  if (isNewKey && entry->is_tombstone)
+
+  // return false if already exist
+  if (!isNewKey) {
+    return false;
+  }
+
+  if (isNewKey && !entry->is_tombstone)
     table->count++;
 
   entry->key = key;
@@ -83,12 +102,12 @@ bool tableSet(Table *table, char *key, u_int32_t hash, AstNode *value) {
   return isNewKey;
 }
 
-bool tableDelete(Table *table, char *key, u_int32_t hash) {
+bool table_delete(Table *table, const char *key, u_int32_t hash) {
   if (table->count == 0)
     return false;
 
   // find the entry.
-  Entry *entry = findEntry(table->entries, table->capacity, key, hash);
+  Entry *entry = find_entry(table->entries, table->capacity, key, hash);
   if (entry->key == NULL)
     return false;
 
@@ -100,16 +119,27 @@ bool tableDelete(Table *table, char *key, u_int32_t hash) {
   return true;
 }
 
-void tableAddAll(Table *from, Table *to) {
+bool table_contains(Table *table, const char *key, u_int32_t hash) {
+  if (table->count == 0)
+    return false;
+
+  Entry *entry = find_entry(table->entries, table->capacity, key, hash);
+  if (entry->key == NULL)
+    return false;
+
+  return true;
+}
+
+void table_add_all(Table *from, Table *to) {
   for (int i = 0; i < from->capacity; i++) {
     Entry *entry = &from->entries[i];
     if (entry->key != NULL) {
-      tableSet(to, entry->key, entry->hash, entry->value);
+      table_set(to, entry->key, entry->hash, entry->value);
     }
   }
 }
 
-void freeTable(Table *table) {
+void free_table(Table *table) {
   FREE_ARRAY(Entry, table->entries, table->capacity);
-  initTable(table);
+  init_table(table);
 }

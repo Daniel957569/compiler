@@ -12,16 +12,19 @@ static uint32_t hashString(const char *key, int length) {
   return hash;
 }
 
-AstNode *ast_create_literal(int value) {
+AstNode *ast_create_literal(int value, int line) {
   AstNode *node = malloc(sizeof(AstNode));
+  node->line = line;
   node->data_type = TYPE_INTEGER;
   node->type = AST_LITERAL;
   node->data.value = value;
   return node;
 }
 
-AstNode *ast_create_binaryop(AstNodeType type, AstNode *left, AstNode *right) {
+AstNode *ast_create_binaryop(AstNodeType type, AstNode *left, AstNode *right,
+                             int line) {
   AstNode *node = malloc(sizeof(AstNode));
+  node->line = line;
   node->data_type = TYPE_BOOLEAN;
   node->type = type;
   node->data.binaryop.left = left;
@@ -29,8 +32,9 @@ AstNode *ast_create_binaryop(AstNodeType type, AstNode *left, AstNode *right) {
   return node;
 }
 
-AstNode *ast_create_unaryop(AstNodeType type, AstNode *operand) {
+AstNode *ast_create_unaryop(AstNodeType type, AstNode *operand, int line) {
   AstNode *node = malloc(sizeof(AstNode));
+  node->line = line;
   node->data_type = type == AST_NEGATE ? TYPE_INTEGER : TYPE_BOOLEAN;
   node->type = type;
   node->data.unaryop.operand = operand;
@@ -38,24 +42,27 @@ AstNode *ast_create_unaryop(AstNodeType type, AstNode *operand) {
   return node;
 }
 
-AstNode *ast_create_boolean(AstNodeType type, bool boolean) {
+AstNode *ast_create_boolean(AstNodeType type, bool boolean, int line) {
   AstNode *node = malloc(sizeof(AstNode));
+  node->line = line;
   node->data_type = TYPE_BOOLEAN;
   node->type = type;
   node->data.boolean = boolean;
   return node;
 }
 
-AstNode *ast_create_string(char *str) {
+AstNode *ast_create_string(const char *str, int line) {
   AstNode *node = malloc(sizeof(AstNode));
+  node->line = line;
   node->data_type = TYPE_STRING;
   node->type = AST_STRING;
   node->data.str = str;
   return node;
 }
 
-AstNode *ast_create_identifier_refrence(char *str) {
+AstNode *ast_create_identifier_refrence(const char *str, int line) {
   AstNode *node = malloc(sizeof(AstNode));
+  node->line = line;
   node->data_type = TYPE_VOID;
   node->type = AST_IDENTIFIER_REFRENCE;
   node->data.variable.name = str;
@@ -65,8 +72,9 @@ AstNode *ast_create_identifier_refrence(char *str) {
 }
 
 AstNode *ast_create_variable_stmt(AstNodeType type, Type data_type,
-                                  const char *name, AstNode *value) {
+                                  const char *name, int line, AstNode *value) {
   AstNode *node = malloc(sizeof(AstNode));
+  node->line = line;
   node->data_type = data_type;
   node->type = type;
   node->data.variable.value = value;
@@ -76,8 +84,9 @@ AstNode *ast_create_variable_stmt(AstNodeType type, Type data_type,
 }
 
 AstNode *ast_create_if_statement(AstNode *condition, AstNode *then_body,
-                                 AstNode *else_body) {
+                                 AstNode *else_body, int line) {
   AstNode *node = malloc(sizeof(AstNode));
+  node->line = line;
   node->data_type = TYPE_VOID;
   node->type = AST_IF_STATEMNET;
   node->data.if_stmt.condition = condition;
@@ -86,8 +95,10 @@ AstNode *ast_create_if_statement(AstNode *condition, AstNode *then_body,
   return node;
 }
 
-AstNode *ast_create_while_statement(AstNode *condition, AstNode *then_body) {
+AstNode *ast_create_while_statement(AstNode *condition, AstNode *then_body,
+                                    int line) {
   AstNode *node = malloc(sizeof(AstNode));
+  node->line = line;
   node->data_type = TYPE_VOID;
   node->type = AST_WHILE_STATEMENT;
   node->data.if_stmt.condition = condition;
@@ -95,24 +106,27 @@ AstNode *ast_create_while_statement(AstNode *condition, AstNode *then_body) {
   return node;
 }
 
-AstNode *ast_create_return_statement(Type type, AstNode *value) {
+AstNode *ast_create_return_statement(Type type, AstNode *value, int line) {
   AstNode *node = malloc(sizeof(AstNode));
+  node->line = line;
   node->data_type = type;
   node->type = AST_RETURN_STATEMENT;
   node->data.return_stmt.value = value;
   return node;
 }
 
-AstNode *ast_create_continue_statement() {
+AstNode *ast_create_continue_statement(int line) {
   AstNode *node = malloc(sizeof(AstNode));
+  node->line = line;
   node->type = AST_CONTINUE_STATEMENT;
   return node;
 }
 
 AstNode *ast_create_function_declaration(Type type, const char *function_name,
                                          StringArray *parameters,
-                                         AstNode *function_body) {
+                                         AstNode *function_body, int line) {
   AstNode *node = malloc(sizeof(AstNode));
+  node->line = line;
   node->data_type = type;
   node->type = AST_FUNCTION;
   node->data.function_decl.parameters = parameters;
@@ -124,8 +138,9 @@ AstNode *ast_create_function_declaration(Type type, const char *function_name,
 }
 
 AstNode *ast_create_function_call(const char *function_name,
-                                  AstArray *arguments) {
+                                  AstArray *arguments, int line) {
   AstNode *node = malloc(sizeof(AstNode));
+  node->line = line;
   node->data_type = TYPE_VOID;
   node->type = AST_FUNCTION_CALL;
   node->data.function_call.arguments = arguments;
@@ -135,10 +150,10 @@ AstNode *ast_create_function_call(const char *function_name,
   return node;
 }
 
-AstNode *ast_create_block(AstNodeType type, AstNode *parent_block) {
+AstNode *ast_create_block(AstNodeType type, int line) {
   AstNode *node = malloc(sizeof(AstNode));
+  node->line = line;
   node->data_type = TYPE_VOID;
-  node->data.block.parent_block = parent_block;
   node->type = type;
   node->data.block.elements = init_ast_array();
   return node;
@@ -176,14 +191,93 @@ double test_evaluate(AstNode *node) {
   return val;
 }
 
-void freeTree(AstNode *node) {
+void free_tree(AstNode *node) {
   if (node == NULL) {
     return;
   }
 
-  freeTree(node->data.binaryop.left);
-  freeTree(node->data.binaryop.right);
-  free(node);
+  switch (node->type) {
+  case AST_LITERAL:
+    free(node);
+    break;
+  case AST_STRING:
+    free(node);
+    break;
+  case AST_IDENTIFIER_REFRENCE:
+    free(node);
+    break;
+  case AST_TRUE:
+    free(node);
+    break;
+  case AST_FALSE:
+    free(node);
+    break;
+  case AST_ADD:
+  case AST_SUBTRACT:
+  case AST_MULTIPLY:
+  case AST_DIVIDE:
+  case AST_EQUAL_EQUAL:
+  case AST_NOT_EQUAL:
+  case AST_GREATER:
+  case AST_GREATER_EQUAL:
+  case AST_LESS:
+  case AST_LESS_EQUAL:
+    free_tree(node->data.binaryop.left);
+    free_tree(node->data.binaryop.right);
+    free(node);
+    break;
+
+  case AST_BANG:
+  case AST_NEGATE:
+    free_tree(node->data.unaryop.operand);
+    free(node);
+    break;
+
+  case AST_LET_DECLARATION:
+  case AST_VAR_ASSIGNMENT:
+    free_tree(node->data.variable.value);
+    free(node);
+    break;
+
+  case AST_IF_STATEMNET:
+    free_tree(node->data.if_stmt.condition);
+    free_tree(node->data.if_stmt.then_body);
+    free_tree(node->data.if_stmt.else_body);
+    free(node);
+    break;
+
+  case AST_WHILE_STATEMENT:
+    free_tree(node->data.while_stmt.condition);
+    free_tree(node->data.while_stmt.then_body);
+    free(node);
+    break;
+
+  case AST_RETURN_STATEMENT:
+    free_tree(node->data.return_stmt.value);
+    free(node);
+    break;
+
+  case AST_CONTINUE_STATEMENT:
+    free(node);
+    break;
+
+  case AST_FUNCTION:
+    free_tree(node->data.function_decl.body);
+    free_string_array(node->data.function_decl.parameters);
+    free(node);
+    break;
+
+  case AST_FUNCTION_CALL:
+    free_ast_array(node->data.function_call.arguments);
+    free(node);
+    break;
+
+  case AST_PROGRAM:
+  case AST_BLOCK:
+    free_ast_array(node->data.block.elements);
+    free(node);
+    break;
+  }
 }
 
 static char *type_to_string(Type type) {
@@ -266,12 +360,6 @@ void print_ast(AstNode *node, int depth) {
 
   case AST_DIVIDE:
     printf("/\n");
-    print_ast(node->data.binaryop.left, depth + 1);
-    print_ast(node->data.binaryop.right, depth + 1);
-    break;
-
-  case AST_EQUAL:
-    printf("=\n");
     print_ast(node->data.binaryop.left, depth + 1);
     print_ast(node->data.binaryop.right, depth + 1);
     break;
