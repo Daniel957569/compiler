@@ -1,6 +1,16 @@
 #include "ast.h"
 #include "memory.h"
 #include <stdio.h>
+#include <string.h>
+
+static uint32_t hashString(const char *key, int length) {
+  uint32_t hash = 2166136261u;
+  for (int i = 0; i < length; i++) {
+    hash ^= (uint8_t)key[i];
+    hash *= 16777619;
+  }
+  return hash;
+}
 
 AstNode *ast_create_literal(int value) {
   AstNode *node = malloc(sizeof(AstNode));
@@ -36,10 +46,10 @@ AstNode *ast_create_boolean(AstNodeType type, bool boolean) {
   return node;
 }
 
-AstNode *ast_create_string(AstNodeType type, char *str) {
+AstNode *ast_create_string(char *str) {
   AstNode *node = malloc(sizeof(AstNode));
   node->data_type = TYPE_STRING;
-  node->type = type;
+  node->type = AST_STRING;
   node->data.str = str;
   return node;
 }
@@ -47,8 +57,10 @@ AstNode *ast_create_string(AstNodeType type, char *str) {
 AstNode *ast_create_identifier_refrence(char *str) {
   AstNode *node = malloc(sizeof(AstNode));
   node->data_type = TYPE_VOID;
-  node->type = AST_IDENTIFIER;
-  node->data.str = str;
+  node->type = AST_IDENTIFIER_REFRENCE;
+  node->data.variable.name = str;
+  node->data.variable.string_hash = hashString(str, strlen(str));
+  node->data.variable.value = NULL;
   return node;
 }
 
@@ -58,12 +70,13 @@ AstNode *ast_create_variable_stmt(AstNodeType type, Type data_type,
   node->data_type = data_type;
   node->type = type;
   node->data.variable.value = value;
+  node->data.variable.string_hash = hashString(name, strlen(name));
   node->data.variable.name = name;
   return node;
 }
 
-AstNode *ast_create_if_stmt(AstNode *condition, AstNode *then_body,
-                            AstNode *else_body) {
+AstNode *ast_create_if_statement(AstNode *condition, AstNode *then_body,
+                                 AstNode *else_body) {
   AstNode *node = malloc(sizeof(AstNode));
   node->data_type = TYPE_VOID;
   node->type = AST_IF_STATEMNET;
@@ -73,12 +86,26 @@ AstNode *ast_create_if_stmt(AstNode *condition, AstNode *then_body,
   return node;
 }
 
-AstNode *ast_create_while_stmt(AstNode *condition, AstNode *then_body) {
+AstNode *ast_create_while_statement(AstNode *condition, AstNode *then_body) {
   AstNode *node = malloc(sizeof(AstNode));
   node->data_type = TYPE_VOID;
   node->type = AST_WHILE_STATEMENT;
   node->data.if_stmt.condition = condition;
   node->data.if_stmt.then_body = then_body;
+  return node;
+}
+
+AstNode *ast_create_return_statement(Type type, AstNode *value) {
+  AstNode *node = malloc(sizeof(AstNode));
+  node->data_type = type;
+  node->type = AST_RETURN_STATEMENT;
+  node->data.return_stmt.value = value;
+  return node;
+}
+
+AstNode *ast_create_continue_statement() {
+  AstNode *node = malloc(sizeof(AstNode));
+  node->type = AST_CONTINUE_STATEMENT;
   return node;
 }
 
@@ -91,6 +118,8 @@ AstNode *ast_create_function_declaration(Type type, const char *function_name,
   node->data.function_decl.parameters = parameters;
   node->data.function_decl.name = function_name;
   node->data.function_decl.body = function_body;
+  node->data.function_decl.string_hash =
+      hashString(function_name, strlen(function_name));
   return node;
 }
 
@@ -100,7 +129,9 @@ AstNode *ast_create_function_call(const char *function_name,
   node->data_type = TYPE_VOID;
   node->type = AST_FUNCTION_CALL;
   node->data.function_call.arguments = arguments;
-  node->data.function_decl.name = function_name;
+  node->data.function_call.name = function_name;
+  node->data.function_call.string_hash =
+      hashString(function_name, strlen(function_name));
   return node;
 }
 
@@ -291,7 +322,7 @@ void print_ast(AstNode *node, int depth) {
     print_ast(node->data.unaryop.operand, depth + 1);
     break;
 
-  case AST_IDENTIFIER:
+  case AST_IDENTIFIER_REFRENCE:
     printf("%s\n", node->data.variable.name);
     break;
 
@@ -330,7 +361,7 @@ void print_ast(AstNode *node, int depth) {
     break;
 
   case AST_WHILE_STATEMENT:
-    printf("While_Stmt\n");
+    printf("While_Stmt: \n");
 
     print("Condition", depth + 1);
     print_ast(node->data.if_stmt.condition, depth + 2);
@@ -338,6 +369,16 @@ void print_ast(AstNode *node, int depth) {
     print("then", depth + 1);
     print_ast(node->data.if_stmt.then_body, depth + 2);
 
+    break;
+
+  case AST_RETURN_STATEMENT:
+    printf("Return: ");
+    printf("%s\n", type_to_string(node->data_type));
+    print_ast(node->data.return_stmt.value, depth + 1);
+    break;
+
+  case AST_CONTINUE_STATEMENT:
+    printf("Continue \n");
     break;
 
   case AST_FUNCTION:

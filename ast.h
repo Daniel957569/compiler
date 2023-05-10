@@ -4,6 +4,7 @@
 #include "./utils/array.h"
 #include "common.h"
 #include <stddef.h>
+#include <sys/types.h>
 
 #define AS_LIST_SIZE(program) (program)->data.block.size
 #define AS_LIST_CAPACITY(program) (program)->data.block.capacity
@@ -13,7 +14,7 @@ typedef enum {
   AST_LITERAL,
   AST_STRING,
 
-  AST_IDENTIFIER,
+  AST_IDENTIFIER_REFRENCE,
 
   AST_TRUE,
   AST_FALSE,
@@ -43,6 +44,9 @@ typedef enum {
 
   AST_IF_STATEMNET,
   AST_WHILE_STATEMENT,
+
+  AST_RETURN_STATEMENT,
+  AST_CONTINUE_STATEMENT,
 
   AST_FUNCTION,
   AST_FUNCTION_CALL,
@@ -77,6 +81,7 @@ typedef struct AstNode {
     } unaryop;
     struct {
       const char *name;
+      u_int32_t string_hash;
       struct AstNode *value;
     } variable;
     struct {
@@ -89,12 +94,17 @@ typedef struct AstNode {
       struct AstNode *then_body;
     } while_stmt;
     struct {
+      struct AstNode *value;
+    } return_stmt;
+    struct {
       const char *name;
+      u_int32_t string_hash;
       StringArray *parameters;
       struct AstNode *body;
     } function_decl;
     struct {
       const char *name;
+      u_int32_t string_hash;
       AstArray *arguments;
     } function_call;
     struct { // block, program_node
@@ -108,13 +118,15 @@ AstNode *ast_create_literal(int value);
 AstNode *ast_create_binaryop(AstNodeType type, AstNode *left, AstNode *right);
 AstNode *ast_create_unaryop(AstNodeType type, AstNode *operand);
 AstNode *ast_create_boolean(AstNodeType type, bool boolean);
-AstNode *ast_create_string(AstNodeType type, char *str);
+AstNode *ast_create_string(char *str);
 AstNode *ast_create_identifier_refrence(char *str);
 AstNode *ast_create_variable_stmt(AstNodeType type, Type data_type,
                                   const char *name, AstNode *value);
-AstNode *ast_create_if_stmt(AstNode *condition, AstNode *then_body,
-                            AstNode *else_body);
-AstNode *ast_create_while_stmt(AstNode *condition, AstNode *then_body);
+AstNode *ast_create_if_statement(AstNode *condition, AstNode *then_body,
+                                 AstNode *else_body);
+AstNode *ast_create_while_statement(AstNode *condition, AstNode *then_body);
+AstNode *ast_create_return_statement(Type type, AstNode *value);
+AstNode *ast_create_continue_statement();
 AstNode *ast_create_function_declaration(Type type, const char *function_name,
                                          StringArray *parameters,
                                          AstNode *function_body);

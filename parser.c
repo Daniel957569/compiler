@@ -182,7 +182,6 @@ static AstNode *expr();
 static AstNode *comparison();
 static AstNode *declaration();
 static AstNode *equality();
-static AstNode *assignment();
 static AstNode *statement();
 
 static AstNode *number() {
@@ -238,7 +237,7 @@ static AstNode *primary() {
     return node;
   }
   if (match(TOKEN_STRING)) {
-    AstNode *node = ast_create_string(AST_STRING, parseName(previous()));
+    AstNode *node = ast_create_string(parseName(previous()));
     return node;
   }
   if (match(TOKEN_IDENTIFIER)) {
@@ -262,8 +261,8 @@ static AstNode *call() {
       advance();
 
       AstNode *node = expr();
-      return ast_create_variable_stmt(AST_VAR_ASSIGNMENT, TYPE_VOID, calle,
-                                      node);
+      return ast_create_variable_stmt(AST_VAR_ASSIGNMENT, node->data_type,
+                                      calle, node);
     }
 
     // function callling
@@ -355,21 +354,22 @@ static AstNode *expr_statment() {
   return node;
 }
 
-static AstNode *assignment() {
-  if (match(TOKEN_LEFT_PAREN)) {
-    char *calle = parseName(previous());
+/* static AstNode *assignment() { */
+/*   if (match(TOKEN_LEFT_PAREN)) { */
+/*     char *calle = parseName(previous()); */
 
-    AstArray *args = arguments();
-    consume(TOKEN_SEMICOLON, "Expected ';' after calling a function");
-    return ast_create_function_call(calle, args);
-  }
-  const char *varName = parseName(previous());
-  consume(TOKEN_EQUAL, "Expected '=' after IDENTIFIER");
-  AstNode *node = expr();
-  consume(TOKEN_SEMICOLON, "Expected ';' after Expression");
+/*     AstArray *args = arguments(); */
+/*     consume(TOKEN_SEMICOLON, "Expected ';' after calling a function"); */
+/*     return ast_create_function_call(calle, args); */
+/*   } */
+/*   const char *varName = parseName(previous()); */
+/*   consume(TOKEN_EQUAL, "Expected '=' after IDENTIFIER"); */
+/*   AstNode *node = expr(); */
+/*   consume(TOKEN_SEMICOLON, "Expected ';' after Expression"); */
 
-  return ast_create_variable_stmt(AST_VAR_ASSIGNMENT, TYPE_VOID, varName, node);
-}
+/*   return ast_create_variable_stmt(AST_VAR_ASSIGNMENT, TYPE_VOID, varName,
+ * node); */
+/* } */
 
 static AstNode *block() {
   AstNode *block = ast_create_block(AST_BLOCK, parser.current_block);
@@ -399,7 +399,7 @@ static AstNode *if_statement() {
     else_body = block();
   }
 
-  return ast_create_if_stmt(condition, then_body, else_body);
+  return ast_create_if_statement(condition, then_body, else_body);
 }
 
 static AstNode *while_statement() {
@@ -408,7 +408,18 @@ static AstNode *while_statement() {
   consume(TOKEN_LEFT_BRACE, "Expect '{' after if condition");
   AstNode *then_body = block();
 
-  return ast_create_while_stmt(condition, then_body);
+  return ast_create_while_statement(condition, then_body);
+}
+
+static AstNode *return_statement() {
+  AstNode *value = expr();
+  consume(TOKEN_SEMICOLON, "Expected ';' after return value.");
+  return ast_create_return_statement(value->data_type, value);
+}
+
+static AstNode *continue_statement() {
+  consume(TOKEN_SEMICOLON, "Expected ';' after continue statement");
+  return ast_create_continue_statement();
 }
 
 static AstNode *statement() {
@@ -416,10 +427,13 @@ static AstNode *statement() {
     return if_statement();
   } else if (match(TOKEN_WHILE)) {
     return while_statement();
+  } else if (match(TOKEN_RETURN)) {
+    return return_statement();
+  } else if (match(TOKEN_CONTINUE)) {
+    return continue_statement();
   }
 
-  AstNode *node = expr_statment();
-  return node;
+  return expr_statment();
 }
 
 static AstNode *let_declaration() {
