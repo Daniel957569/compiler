@@ -5,7 +5,23 @@
 #include "../common.h"
 #include <sys/types.h>
 
-struct Symbol; // forward declaration from semantic_check.h
+// struct Symbol; // forward declaration from semantic_check.h
+// idk how forward declaration works, it wouldn't let me access symbol data so
+// its here now.
+
+typedef enum {
+  FUNCTION_TYPE,
+  VARIABLE_TYPE,
+  PARAMETER_TYPE,
+
+} SymbolType;
+
+typedef struct Symbol {
+  AstNode *value;
+  int scope;
+  SymbolType type;
+  Type data_type;
+} Symbol;
 
 typedef struct {
   const char *key;
@@ -26,6 +42,7 @@ bool table_set(Table *table, const char *key, u_int32_t hash,
 bool table_get(Table *table, const char *key, u_int32_t hash,
                struct Symbol *value);
 bool table_delete(Table *table, const char *key, u_int32_t hash);
+bool table_contains(Table *table, const char *key, u_int32_t hash);
 void table_add_all(Table *from, Table *to);
 void free_table(Table *table);
 

@@ -5,6 +5,12 @@
 
 #define TABLE_MAX_LOAD 0.75
 
+static void print_table(Table *table) {
+  for (int i = 0; i < table->capacity; i++) {
+    printf("%d: %s\n", i, table->entries[i].key);
+  }
+}
+
 void init_table(Table *table) {
   table->count = 0;
   table->capacity = 0;
@@ -27,7 +33,7 @@ static Entry *find_entry(Entry *entries, int capacity, const char *key,
         if (tombstone == NULL)
           tombstone = entry;
       }
-    } else if (entry->key == key) {
+    } else if (!strcmp(entry->key, key)) {
       // we found the key.
       return entry;
     }
@@ -73,11 +79,11 @@ bool table_get(Table *table, const char *key, u_int32_t hash,
   if (entry->key == NULL)
     return false;
 
-  value = entry->value;
+  *value = *entry->value;
   return true;
 }
 
-bool table_set(Table *table, const char *key, u_int32_t hash,
+bool table_set(Table *table, const char *key, uint32_t hash,
                struct Symbol *value) {
   if (table->count + 1 > table->capacity * TABLE_MAX_LOAD) {
     int capacity = GROW_CAPACITY(table->capacity);
@@ -99,10 +105,11 @@ bool table_set(Table *table, const char *key, u_int32_t hash,
   entry->hash = hash;
   entry->value = value;
   entry->is_tombstone = false;
+  /* print_table(table); */
   return isNewKey;
 }
 
-bool table_delete(Table *table, const char *key, u_int32_t hash) {
+bool table_delete(Table *table, const char *key, uint32_t hash) {
   if (table->count == 0)
     return false;
 
@@ -124,10 +131,11 @@ bool table_contains(Table *table, const char *key, u_int32_t hash) {
     return false;
 
   Entry *entry = find_entry(table->entries, table->capacity, key, hash);
-  if (entry->key == NULL)
-    return false;
+  if (!strcmp(entry->key, key)) {
+    return true;
+  }
 
-  return true;
+  return false;
 }
 
 void table_add_all(Table *from, Table *to) {

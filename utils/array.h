@@ -6,6 +6,7 @@
 #include "../scanner.h"
 
 struct AstNode; // forward declaration, lsp throws recursive error, only fix i
+struct Identifier;
 struct Environment;
 struct Table;
 
@@ -26,8 +27,8 @@ typedef struct {
 typedef struct {
   int size;
   int capacity;
-  char **items;
-} StringArray;
+  struct Identifier **items;
+} IdentifierArray;
 
 typedef struct {
   int size;
@@ -43,9 +44,9 @@ AstArray *init_ast_array();
 void push_ast_array(AstArray *arr, struct AstNode *item);
 void free_ast_array(AstArray *arr);
 
-StringArray *init_string_array();
-void push_string_array(StringArray *arr, const char *str);
-void free_string_array(StringArray *arr);
+IdentifierArray *init_identifier_array();
+void push_identifier_array(IdentifierArray *arr, struct Identifier *identifier);
+void free_identifier_array(IdentifierArray *arr);
 
 EnvironmentArray *init_environment_array();
 void push_environment_array(EnvironmentArray *arr, struct Environment *env);

@@ -54,26 +54,25 @@ void free_ast_array(AstArray *arr) {
   free(arr->items);
 }
 
-StringArray *init_string_array() {
-  StringArray *array = malloc(sizeof(StringArray));
-  array->items = ALLOCATE(char *, 8);
+IdentifierArray *init_identifier_array() {
+  IdentifierArray *array = malloc(sizeof(IdentifierArray));
+  array->items = ALLOCATE(Identifier *, 8);
   array->size = 0;
   array->capacity = 8;
   return array;
 }
 
-void push_string_array(StringArray *arr, const char *str) {
+void push_identifier_array(IdentifierArray *arr, Identifier *identifier) {
   if (arr->capacity * GROWTH_FACTOR < arr->size) {
     arr->capacity *= 2;
     arr->items = realloc(arr->items, arr->capacity * sizeof(char *));
   }
 
-  arr->items[arr->size] = malloc((strlen(str) + 1) * sizeof(char));
-  strcpy(arr->items[arr->size], str);
+  arr->items[arr->size] = identifier;
   arr->size++;
 }
 
-void free_string_array(StringArray *arr) {
+void free_identifier_array(IdentifierArray *arr) {
   for (int i = 0; i < arr->size; i++) {
     free(arr->items[i]);
   }

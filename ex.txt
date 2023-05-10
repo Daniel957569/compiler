@@ -1,0 +1,4 @@
+fun b(c: int, a: int): int {
+    let b: int = gggg;
+}
+

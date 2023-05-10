@@ -205,17 +205,18 @@ static AstArray *arguments() {
   return arguments_list;
 }
 
-static StringArray *parameters() {
-  // parameters     → IDENTIFIER ( "," IDENTIFIER )* ;
-  StringArray *parameters_array = init_string_array();
+static IdentifierArray *parameters() {
+  // parameters     → IDENTIFIER: type ( "," IDENTIFIER: type )* ;
+  IdentifierArray *parameters_array = init_identifier_array();
   if (check(TOKEN_IDENTIFIER)) {
-    push_string_array(parameters_array, parseName(current()));
-    advance();
-
-    while (match(TOKEN_COMMA)) {
-      push_string_array(parameters_array, parseName(current()));
+    do {
+      char *parameter = parseName(current());
       advance();
-    }
+      consume(TOKEN_COLONS, "Expected ':' after parameter to define type");
+      Type parameter_type = variable_type();
+      push_identifier_array(parameters_array,
+                            create_identifier(parameter, parameter_type));
+    } while (match(TOKEN_COMMA));
   }
 
   return parameters_array;
@@ -462,7 +463,7 @@ static AstNode *function_delclaration() {
   consume(TOKEN_IDENTIFIER, "Expected IDENTIFIER after 'fun'");
 
   consume(TOKEN_LEFT_PAREN, "Expected '(' before function arguments");
-  StringArray *parameters_array = parameters();
+  IdentifierArray *parameters_array = parameters();
   consume(TOKEN_RIGHT_PAREN, "Expected ')' after function arguments");
 
   consume(TOKEN_COLONS, "Expected ':' after Parent for type declaration");

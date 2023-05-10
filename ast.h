@@ -62,6 +62,12 @@ typedef enum {
   TYPE_STRING
 } Type;
 
+typedef struct Identifier {
+  Type type;
+  char *name;
+  uint32_t hash;
+} Identifier;
+
 typedef struct AstNode {
   AstNodeType type;
   Type data_type;
@@ -98,7 +104,7 @@ typedef struct AstNode {
     struct {
       const char *name;
       u_int32_t string_hash;
-      StringArray *parameters;
+      IdentifierArray *parameters;
       struct AstNode *body;
     } function_decl;
     struct {
@@ -128,12 +134,14 @@ AstNode *ast_create_while_statement(AstNode *condition, AstNode *then_body,
 AstNode *ast_create_return_statement(Type type, AstNode *value, int line);
 AstNode *ast_create_continue_statement(int line);
 AstNode *ast_create_function_declaration(Type type, const char *function_name,
-                                         StringArray *parameters,
+                                         IdentifierArray *parameters,
                                          AstNode *function_body, int line);
 AstNode *ast_create_function_call(const char *function_name,
                                   AstArray *arguments, int line);
 
 AstNode *ast_create_block(AstNodeType type, int line);
+
+Identifier *create_identifier(char *name, Type type);
 
 double test_evaluate(AstNode *node);
 void free_tree(AstNode *node);

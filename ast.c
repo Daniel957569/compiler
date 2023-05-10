@@ -1,5 +1,6 @@
 #include "ast.h"
 #include "memory.h"
+#include "utils/array.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -123,7 +124,7 @@ AstNode *ast_create_continue_statement(int line) {
 }
 
 AstNode *ast_create_function_declaration(Type type, const char *function_name,
-                                         StringArray *parameters,
+                                         IdentifierArray *parameters,
                                          AstNode *function_body, int line) {
   AstNode *node = malloc(sizeof(AstNode));
   node->line = line;
@@ -157,6 +158,14 @@ AstNode *ast_create_block(AstNodeType type, int line) {
   node->type = type;
   node->data.block.elements = init_ast_array();
   return node;
+}
+
+Identifier *create_identifier(char *name, Type type) {
+  Identifier *identifier = malloc(sizeof(Identifier));
+  identifier->name = name;
+  identifier->type = type;
+  identifier->hash = hashString(name, strlen(name));
+  return identifier;
 }
 
 double test_evaluate(AstNode *node) {
@@ -263,7 +272,7 @@ void free_tree(AstNode *node) {
 
   case AST_FUNCTION:
     free_tree(node->data.function_decl.body);
-    free_string_array(node->data.function_decl.parameters);
+    free_identifier_array(node->data.function_decl.parameters);
     free(node);
     break;
 
@@ -295,10 +304,12 @@ static char *type_to_string(Type type) {
   }
 }
 
-static void print_parameters(StringArray *array, int depth) {
+static void print_parameters(IdentifierArray *array, int depth) {
+  printf("(");
   for (int i = 0; i < array->size; i++) {
-    printf("%s, ", array->items[i]);
+    printf("%s, ", array->items[i]->name);
   }
+  printf(")");
 }
 
 static void print_arguments(AstArray *array, int depth) {
@@ -470,7 +481,7 @@ void print_ast(AstNode *node, int depth) {
     break;
 
   case AST_FUNCTION:
-    printf("Function: ");
+    printf("Function %s: ", node->data.function_decl.name);
     print_parameters(node->data.function_decl.parameters, depth);
     printf(": %s\n", type_to_string(node->data_type));
     print_ast(node->data.function_decl.body, depth + 1);
