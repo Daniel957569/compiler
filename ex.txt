@@ -1,4 +1,12 @@
-fun b(c: int, a: int): int {
-    let b: int = gggg;
-}
+fun hello(): int {
+    if true {
+        let x: int = 10;
+    }
 
+
+    if true {
+        let x: int = 10;
+    } else {
+        let x: int = 10;
+    }
+}

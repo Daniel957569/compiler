@@ -21,12 +21,13 @@ static void errorAt(int line, const char *token, const char *message) {
 }
 
 static void print_table(Table *table) {
+  printf("------ TABLE ------\n");
   for (int i = 0; i < table->capacity; i++) {
-    printf("%d: %s\n", i, table->entries[i].key);
+    printf("%d: %s %d\n", i, table->entries[i].key, table->entries[i].hash);
   }
 }
 
-static Environment *init_environment() {
+static void init_environment() {
   // free scopes that dont matter anymore.
   // {
   //  current_scope: 1
@@ -37,14 +38,16 @@ static Environment *init_environment() {
   // so need to free that data
   //  current_scope: 1
   // }
-  if (env_array->items[current_scope] != NULL) {
+  if (env_array->items[current_scope]->is_initialized && current_scope != 0) {
+    printf("free scope %d\n", current_scope);
     free_table(&env_array->items[current_scope]->table);
   }
 
-  Environment *env = malloc(sizeof(Environment));
-  env->current_scope = current_scope;
-  init_table(&env->table);
-  return env;
+  /* Environment *env = malloc(sizeof(Environment)); */
+  env_array->items[current_scope]->is_initialized = true;
+  env_array->items[current_scope]->current_scope = current_scope;
+
+  init_table(AS_TABLE(current_scope));
 }
 
 static Symbol *init_symbol(AstNode *value, SymbolType type,
@@ -334,7 +337,7 @@ static void semantic_check(AstNode *node) {
     is_function = true;
 
     // add parameters to function scope
-    env_array->items[current_scope] = init_environment();
+    init_environment();
     for (int i = 0; i < node->data.function_decl.parameters->size; i++) {
       if (!table_set(
               AS_TABLE(current_scope), AS_PARAMETER_NAME(node, i),
@@ -354,7 +357,7 @@ static void semantic_check(AstNode *node) {
     // parameters in the AST_FUNCTION
     if (!is_function) {
       current_scope++;
-      env_array->items[current_scope] = init_environment();
+      init_environment();
     } else {
       is_function = false;
     }
@@ -367,7 +370,8 @@ static void semantic_check(AstNode *node) {
     break;
   }
   case AST_PROGRAM: {
-    env_array->items[0] = init_environment();
+    init_environment();
+
     for (int i = 0; i < node->data.block.elements->size; i++) {
       semantic_check(node->data.block.elements->items[i]);
     }

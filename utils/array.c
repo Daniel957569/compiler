@@ -1,5 +1,7 @@
 #include "array.h"
 #include "../ast.h"
+#include "../semantic_check.h"
+#include "table.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -82,15 +84,27 @@ void free_identifier_array(IdentifierArray *arr) {
 
 EnvironmentArray *init_environment_array() {
   EnvironmentArray *array = malloc(sizeof(EnvironmentArray));
-  array->items = ALLOCATE(struct Environment *, 8);
+  array->items = ALLOCATE(Environment *, 8);
+  /* array->items = NULL; */
   array->size = 0;
   array->capacity = 8;
+
+  for (int i = 0; i < 8; i++) {
+    array->items[i] = malloc(sizeof(Environment));
+    array->items[i]->is_initialized = false;
+    init_table(&array->items[i]->table);
+  }
+
   return array;
 }
 void push_environment_array(EnvironmentArray *arr, struct Environment *env) {
   if (arr->capacity * GROWTH_FACTOR < arr->size) {
     arr->items = GROW_ARRAY(struct Environment *, arr->items, arr->capacity,
                             arr->capacity * 1.5);
+
+    for (int i = arr->capacity; i < arr->capacity * 1.5; i++) {
+      arr->items[i]->is_initialized = false;
+    }
     arr->capacity *= 1.5;
   }
 

@@ -15,6 +15,7 @@ void init_table(Table *table) {
   table->count = 0;
   table->capacity = 0;
   table->entries = NULL;
+  /* table->entries = ALLOCATE(Entry, 8); */
 }
 
 static Entry *find_entry(Entry *entries, int capacity, const char *key,

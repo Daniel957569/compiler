@@ -30,6 +30,7 @@
 typedef struct Environment {
   Table table;
   int current_scope;
+  bool is_initialized;
 } Environment;
 
 void semantic_analysis(AstNode *program);
