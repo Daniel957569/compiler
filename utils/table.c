@@ -33,7 +33,7 @@ static Entry *find_entry(Entry *entries, int capacity, const char *key,
         if (tombstone == NULL)
           tombstone = entry;
       }
-    } else if (!strcmp(entry->key, key)) {
+    } else if (strcmp(entry->key, key) == 0) {
       // we found the key.
       return entry;
     }
@@ -105,7 +105,6 @@ bool table_set(Table *table, const char *key, uint32_t hash,
   entry->hash = hash;
   entry->value = value;
   entry->is_tombstone = false;
-  /* print_table(table); */
   return isNewKey;
 }
 
@@ -131,7 +130,11 @@ bool table_contains(Table *table, const char *key, u_int32_t hash) {
     return false;
 
   Entry *entry = find_entry(table->entries, table->capacity, key, hash);
-  if (!strcmp(entry->key, key)) {
+  if (entry->key == NULL) {
+    return false;
+  }
+
+  if (strcmp(entry->key, key) == 0) {
     return true;
   }
 
