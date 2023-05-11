@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "array.h"
 #include "table.h"
 
 #define TABLE_MAX_LOAD 0.75
@@ -69,6 +70,23 @@ static void adjust_capacity(Table *table, int capacity, const char *key,
   FREE_ARRAY(Entry, table->entries, table->capacity);
   table->entries = entries;
   table->capacity = capacity;
+}
+
+bool table_get_function(Table *table, const char *key, u_int32_t hash,
+                        struct Symbol *value) {
+  if (table->count == 0)
+    return false;
+
+  Entry *entry = find_entry(table->entries, table->capacity, key, hash);
+  if (entry->key == NULL)
+    return false;
+
+  IdentifierArray *array = init_identifier_array();
+  AstNode *node =
+      ast_create_function_declaration(0, entry->key, array, NULL, 0);
+  *value = *entry->value;
+
+  return true;
 }
 
 bool table_get(Table *table, const char *key, u_int32_t hash,

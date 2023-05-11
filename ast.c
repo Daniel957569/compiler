@@ -173,7 +173,7 @@ AstNode *ast_create_block(AstNodeType type, int line) {
 Identifier *create_identifier(char *name, DataType type) {
   Identifier *identifier = malloc(sizeof(Identifier));
   identifier->name = name;
-  identifier->type = type;
+  identifier->data_type = type;
   identifier->hash = hashString(name, strlen(name));
   return identifier;
 }

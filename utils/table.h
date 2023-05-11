@@ -41,6 +41,8 @@ bool table_set(Table *table, const char *key, u_int32_t hash,
                struct Symbol *value);
 bool table_get(Table *table, const char *key, u_int32_t hash,
                struct Symbol *value);
+bool table_get_function(Table *table, const char *key, u_int32_t hash,
+                        struct Symbol *value);
 bool table_delete(Table *table, const char *key, u_int32_t hash);
 bool table_contains(Table *table, const char *key, u_int32_t hash);
 void table_add_all(Table *from, Table *to);

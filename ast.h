@@ -64,7 +64,7 @@ typedef enum {
 } DataType;
 
 typedef struct Identifier {
-  DataType type;
+  DataType data_type;
   char *name;
   uint32_t hash;
 } Identifier;

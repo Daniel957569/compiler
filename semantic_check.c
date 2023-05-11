@@ -2,6 +2,7 @@
 #include "./utils/table.h"
 #include "ast.h"
 #include "utils/array.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -325,9 +326,10 @@ static void semantic_check(AstNode *node) {
   }
 
   case AST_FUNCTION: {
-    if (!table_set(AS_TABLE(current_scope), node->data.function_decl.name,
-                   node->data.function_decl.string_hash,
-                   init_symbol(NULL, FUNCTION_TYPE, node->data_type))) {
+    if (!table_set(AS_TABLE(current_scope), AS_FUNCTION_DECL(node).name,
+                   AS_FUNCTION_DECL(node).string_hash,
+                   init_symbol(node, FUNCTION_TYPE, node->data_type))) {
+
       errorAt(node->line, node->data.function_decl.name,
               "Cannot redefine function.");
     }
@@ -339,10 +341,10 @@ static void semantic_check(AstNode *node) {
     // add parameters to function scope
     init_environment();
     for (int i = 0; i < node->data.function_decl.parameters->size; i++) {
-      if (!table_set(
-              AS_TABLE(current_scope), AS_PARAMETER_NAME(node, i),
-              AS_PARAMETER_HASH(node, i),
-              init_symbol(NULL, PARAMETER_TYPE, AS_PARAMETER_TYPE(node, i)))) {
+      if (!table_set(AS_TABLE(current_scope), AS_PARAMETER(node, i)->name,
+                     AS_PARAMETER(node, i)->hash,
+                     init_symbol(NULL, PARAMETER_TYPE,
+                                 AS_PARAMETER(node, i)->data_type))) {
         errorAt(node->line, node->data.function_decl.name,
                 "Cannot redefine parameters.");
       }
@@ -352,6 +354,76 @@ static void semantic_check(AstNode *node) {
 
     break;
   }
+
+  case AST_FUNCTION_CALL: {
+#ifndef FUNCTION_CALL
+#define FUNCTION_CALL
+
+#define AS_FUNCTION_DECL_SIZE(node)                                            \
+  (node)->value->data.function_decl.parameters->size
+
+#define AS_FUNCTION_CALL_SIZE(node) (node)->data.function_call.arguments->size
+#define AS_ARGUMENT(node, index)                                               \
+  (node)->data.function_call.arguments->items[(index)]
+
+    AstNode *function =
+        ast_create_function_declaration(TYPE_VOID, "yo", NULL, NULL, 1);
+    Symbol *identifier = init_symbol(function, FUNCTION_TYPE, TYPE_VOID);
+
+    // check if there is definition of the function
+    bool has_definition = false;
+    for (int i = current_scope; i >= 0; i--) {
+
+      if (table_get_function(AS_TABLE(i), AS_FUNCTION_CALL(node).name,
+                             AS_FUNCTION_CALL(node).string_hash, identifier)) {
+        // check to see if the identifier is a function or variable
+        if (identifier->type != FUNCTION_TYPE) {
+          printf("%d\n", identifier->data_type);
+          errorAt(node->line, node->data.function_call.name,
+                  "Variable is not a function calle.");
+          break;
+        }
+
+        node->data_type = identifier->data_type;
+        has_definition = true;
+        break;
+      } else {
+        has_definition = false;
+      }
+    }
+
+    if (!has_definition) {
+      errorAt(node->line, AS_FUNCTION_CALL(node).name,
+              "Undefined function call.");
+      break;
+    }
+
+    // check if parameters and arguments size is equal
+    if (AS_FUNCTION_DECL_SIZE(identifier) != AS_FUNCTION_CALL_SIZE(node)) {
+      char error[100];
+      sprintf(error, "Function '%s' takes %d arguments but %d were given",
+              AS_FUNCTION_CALL(node).name, AS_FUNCTION_DECL_SIZE(identifier),
+              AS_FUNCTION_CALL_SIZE(node));
+      errorAt(node->line + 1, AS_FUNCTION_CALL(node).name, error);
+    }
+
+    for (int i = 0; i < AS_FUNCTION_DECL_SIZE(identifier); i++) {
+      // reslove argument first
+      semantic_check(AS_ARGUMENT(node, i));
+
+      // compare parameters and argument
+      if (AS_PARAMETER(identifier->value, i)->data_type !=
+          AS_ARGUMENT(node, i)->data_type) {
+        char error[100];
+        sprintf(error, "Argument '%s' does not match function type",
+                AS_ARGUMENT(node, i)->data.identifier_refrence);
+        errorAt(node->line + 1, AS_FUNCTION_CALL(node).name, error);
+      }
+    }
+#endif
+    break;
+  }
+
   case AST_BLOCK: {
     // if its a function the block has already made to fit in the
     // parameters in the AST_FUNCTION
