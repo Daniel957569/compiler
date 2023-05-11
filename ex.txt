@@ -10,3 +10,7 @@ fun hello(): int {
         let x: int = 10;
     }
 }
+
+fun hi(): int {
+
+}
