@@ -27,7 +27,10 @@ void push_token_array(Token *item, TokenArray *arr) {
   arr->size++;
 }
 
-void free_token_array(TokenArray *arr) { free(arr->items); }
+void free_token_array(TokenArray *arr) {
+  free(arr->items);
+  free(arr);
+}
 
 AstArray *init_ast_array() {
   AstArray *array = malloc(sizeof(AstArray));
@@ -50,10 +53,11 @@ void push_ast_array(AstArray *arr, AstNode *item) {
 
 void free_ast_array(AstArray *arr) {
   for (int i = 0; i < arr->size; i++) {
-    free(arr->items[i]);
+    free_tree(arr->items[i]);
   }
 
   free(arr->items);
+  free(arr);
 }
 
 IdentifierArray *init_identifier_array() {
@@ -80,6 +84,7 @@ void free_identifier_array(IdentifierArray *arr) {
   }
 
   free(arr->items);
+  free(arr);
 }
 
 EnvironmentArray *init_environment_array() {
@@ -114,8 +119,10 @@ void push_environment_array(EnvironmentArray *arr, struct Environment *env) {
 
 void free_environment_array(EnvironmentArray *arr) {
   for (int i = 0; i < arr->size; i++) {
+    free_table(&arr->items[i]->table);
     free(arr->items[i]);
   }
 
   free(arr->items);
+  free(arr);
 }

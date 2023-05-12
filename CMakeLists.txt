@@ -7,6 +7,7 @@ add_executable(
     compiler main.c scanner.c scanner.h memory.h memory.c
     parser.c parser.h ast.c ast.h common.h
     semantic_check.c semantic_check.h
+    codegen.c codegen.h
     utils/file.c utils/file.h 
     utils/table.c utils/table.h
     utils/array.c utils/array.h

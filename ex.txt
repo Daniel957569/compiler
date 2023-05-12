@@ -1,16 +1,24 @@
-fun hello(): int {
-    if true {
-        let x: int = 10;
+int hello(int x, int b) {
+    int yo = 20;
+    let yo1 = 40;
+    let yo2 = 40;
+    let yo3 = 40;
+    let yo4 = 40;
+    let yo5 = 40;
+    let yo6 = 40;
+    let yo7 = 40;
+    let yo8 = 40;
+    let yo9 = 40;
+
+    if (x == 20) {
+        return 20;
     }
 
-
-    if true {
-        let x: int = 10;
-    } else {
-        let x: int = 10;
+    while (yo == 20) {
+        yo++;
     }
 }
 
-fun hi(): int {
-
+int main() {
+    hello(10, 20);
 }

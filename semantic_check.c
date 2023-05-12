@@ -9,13 +9,17 @@
 EnvironmentArray *env_array;
 int current_scope = 0;
 
+// cheap, fix later
+
 // for some odd reason i cant make one in AST_IDENTIFIER_REFRENCE, cant be
 // bothered
 Symbol *identifier;
 
 bool is_function = false;
+bool has_error = false;
 
 static void errorAt(int line, const char *token, const char *message) {
+  has_error = true;
   fprintf(stderr, "[line %d] Error", line - 1);
   fprintf(stderr, " at '%s'", token);
   fprintf(stderr, ": %s\n", message);
@@ -49,6 +53,20 @@ static void init_environment() {
   env_array->items[current_scope]->current_scope = current_scope;
 
   init_table(AS_TABLE(current_scope));
+}
+
+static bool has_main_function(AstNode *program) {
+  for (int i = 0; i < program->data.block.elements->size; i++) {
+    if (program->data.block.elements->items[i]->type != AST_FUNCTION) {
+      continue;
+    }
+
+    if (strcmp(AS_FUNCTION_DECL(program->data.block.elements->items[i]).name,
+               "main") == 0) {
+      return true;
+    }
+  }
+  return false;
 }
 
 static Symbol *init_symbol(AstNode *value, SymbolType type,
@@ -224,6 +242,11 @@ static void semantic_check(AstNode *node) {
     break;
   }
 
+  case AST_RETURN_STATEMENT: {
+    printf("TODO: RETUUN STATEMENT\n");
+    break;
+  }
+
   case AST_IDENTIFIER_REFRENCE: {
     // check for the variable assigning and change its data type to its
     // correct one if exist
@@ -307,8 +330,8 @@ static void semantic_check(AstNode *node) {
   }
 
   case AST_IF_STATEMNET: {
-    // semantic first because first you resolve the identifiers and then check
-    // their types
+    // semantic first because first you resolve the identifiers and then
+    // check their types
     semantic_check(node->data.if_stmt.condition);
     if (node->data.if_stmt.condition->data_type != TYPE_BOOLEAN) {
       errorAt(node->line, "if", "Condition must be of type boolean");
@@ -458,6 +481,17 @@ void semantic_analysis(AstNode *program) {
   env_array = init_environment_array();
 
   semantic_check(program);
+
+  if (!has_main_function(program)) {
+    printf(
+        "[Program] Error entry point: Program does not have main function\n");
+    exit(64);
+  }
+
+  if (has_error) {
+    printf("Cannot compile due to errors.\n");
+    exit(64);
+  }
 
   free_environment_array(env_array);
 }

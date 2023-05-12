@@ -2,9 +2,7 @@
 #include "./utils/array.h"
 #include "ast.h"
 #include "common.h"
-#include "scanner.h"
 #include "semantic_check.h"
-#include <stdlib.h>
 #include <string.h>
 
 typedef struct {
@@ -25,6 +23,18 @@ static void initParser(Token *tokens, AstNode *block) {
   parser.current = 0;
   parser.hadError = false;
   parser.inPanicMode = false;
+}
+
+static void free_parser() { free(parser.current_block); }
+
+static void free_tokens(Token *token) {
+  free(token);
+  /* int i = 0; */
+  /* while (token->type != TOKEN_EOF) { */
+  /*   i++; */
+  /*   token++; */
+  /* } */
+  /* printf("%d\n", i); */
 }
 
 static void errorAt(Token *token, const char *message) {
@@ -500,8 +510,7 @@ static AstNode *declaration() {
 
 double parseExpression(const char *source) { return 0.0; }
 
-void parse(const char *source) {
-  Token *tokens = getTokens(source);
+AstNode *parse(Token *tokens) {
   AstNode *program = ast_create_block(AST_PROGRAM, 0);
   initParser(tokens, program);
 
@@ -510,6 +519,10 @@ void parse(const char *source) {
   }
 
   semantic_analysis(program);
+
   print_ast(program, 0);
+  free_parser();
+  free_tokens(tokens);
   free_tree(program);
+  return program;
 }
