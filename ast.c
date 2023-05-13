@@ -14,7 +14,7 @@ static uint32_t hashString(const char *key, int length) {
 }
 
 AstNode *ast_create_number(double value, int line) {
-  AstNode *node = malloc(sizeof(AstNode));
+  AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->data_type = TYPE_INTEGER;
   node->type = AST_INTEGER;
@@ -23,7 +23,7 @@ AstNode *ast_create_number(double value, int line) {
 }
 
 AstNode *ast_create_float(float value, int line) {
-  AstNode *node = malloc(sizeof(AstNode));
+  AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->data_type = TYPE_FLOAT;
   node->type = AST_FLOAT;
@@ -33,9 +33,9 @@ AstNode *ast_create_float(float value, int line) {
 
 AstNode *ast_create_binaryop(AstNodeType type, AstNode *left, AstNode *right,
                              int line) {
-  AstNode *node = malloc(sizeof(AstNode));
+  AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
-  node->data_type = TYPE_BOOLEAN;
+  node->data_type = TYPE_VOID;
   node->type = type;
   node->data.binaryop.left = left;
   node->data.binaryop.right = right;
@@ -43,7 +43,7 @@ AstNode *ast_create_binaryop(AstNodeType type, AstNode *left, AstNode *right,
 }
 
 AstNode *ast_create_unaryop(AstNodeType type, AstNode *operand, int line) {
-  AstNode *node = malloc(sizeof(AstNode));
+  AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->data_type = type == AST_NEGATE ? TYPE_INTEGER : TYPE_BOOLEAN;
   node->type = type;
@@ -53,7 +53,7 @@ AstNode *ast_create_unaryop(AstNodeType type, AstNode *operand, int line) {
 }
 
 AstNode *ast_create_boolean(AstNodeType type, bool boolean, int line) {
-  AstNode *node = malloc(sizeof(AstNode));
+  AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->data_type = TYPE_BOOLEAN;
   node->type = type;
@@ -62,7 +62,7 @@ AstNode *ast_create_boolean(AstNodeType type, bool boolean, int line) {
 }
 
 AstNode *ast_create_string(const char *str, int line) {
-  AstNode *node = malloc(sizeof(AstNode));
+  AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->data_type = TYPE_STRING;
   node->type = AST_STRING;
@@ -71,7 +71,7 @@ AstNode *ast_create_string(const char *str, int line) {
 }
 
 AstNode *ast_create_identifier_refrence(const char *str, int line) {
-  AstNode *node = malloc(sizeof(AstNode));
+  AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->data_type = TYPE_VOID;
   node->type = AST_IDENTIFIER_REFRENCE;
@@ -83,7 +83,7 @@ AstNode *ast_create_identifier_refrence(const char *str, int line) {
 
 AstNode *ast_create_variable_stmt(AstNodeType type, DataType data_type,
                                   const char *name, int line, AstNode *value) {
-  AstNode *node = malloc(sizeof(AstNode));
+  AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->data_type = data_type;
   node->type = type;
@@ -95,7 +95,7 @@ AstNode *ast_create_variable_stmt(AstNodeType type, DataType data_type,
 
 AstNode *ast_create_if_statement(AstNode *condition, AstNode *then_body,
                                  AstNode *else_body, int line) {
-  AstNode *node = malloc(sizeof(AstNode));
+  AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->data_type = TYPE_VOID;
   node->type = AST_IF_STATEMNET;
@@ -107,7 +107,7 @@ AstNode *ast_create_if_statement(AstNode *condition, AstNode *then_body,
 
 AstNode *ast_create_while_statement(AstNode *condition, AstNode *then_body,
                                     int line) {
-  AstNode *node = malloc(sizeof(AstNode));
+  AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->data_type = TYPE_VOID;
   node->type = AST_WHILE_STATEMENT;
@@ -117,7 +117,7 @@ AstNode *ast_create_while_statement(AstNode *condition, AstNode *then_body,
 }
 
 AstNode *ast_create_return_statement(DataType type, AstNode *value, int line) {
-  AstNode *node = malloc(sizeof(AstNode));
+  AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->data_type = type;
   node->type = AST_RETURN_STATEMENT;
@@ -126,7 +126,7 @@ AstNode *ast_create_return_statement(DataType type, AstNode *value, int line) {
 }
 
 AstNode *ast_create_continue_statement(int line) {
-  AstNode *node = malloc(sizeof(AstNode));
+  AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->type = AST_CONTINUE_STATEMENT;
   return node;
@@ -136,7 +136,7 @@ AstNode *ast_create_function_declaration(DataType type,
                                          const char *function_name,
                                          IdentifierArray *parameters,
                                          AstNode *function_body, int line) {
-  AstNode *node = malloc(sizeof(AstNode));
+  AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->data_type = type;
   node->type = AST_FUNCTION;
@@ -150,7 +150,7 @@ AstNode *ast_create_function_declaration(DataType type,
 
 AstNode *ast_create_function_call(const char *function_name,
                                   AstArray *arguments, int line) {
-  AstNode *node = malloc(sizeof(AstNode));
+  AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->data_type = TYPE_VOID;
   node->type = AST_FUNCTION_CALL;
@@ -162,7 +162,7 @@ AstNode *ast_create_function_call(const char *function_name,
 }
 
 AstNode *ast_create_block(AstNodeType type, int line) {
-  AstNode *node = malloc(sizeof(AstNode));
+  AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->data_type = TYPE_VOID;
   node->type = type;
@@ -171,7 +171,7 @@ AstNode *ast_create_block(AstNodeType type, int line) {
 }
 
 Identifier *create_identifier(char *name, DataType type) {
-  Identifier *identifier = malloc(sizeof(Identifier));
+  Identifier *identifier = ALLOCATE(Identifier, 1);
   identifier->name = name;
   identifier->data_type = type;
   identifier->hash = hashString(name, strlen(name));

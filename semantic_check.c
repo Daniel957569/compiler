@@ -79,6 +79,22 @@ static Symbol *init_symbol(AstNode *value, SymbolType type,
   return symbol;
 }
 
+static bool check_data_type(AstNode *node) {
+  if (AS_BINARYOP(node).left->data_type == TYPE_INTEGER &&
+      AS_BINARYOP(node).right->data_type == TYPE_INTEGER) {
+    node->data_type = TYPE_INTEGER;
+    return true;
+  }
+
+  if (AS_BINARYOP(node).left->data_type == TYPE_FLOAT &&
+      AS_BINARYOP(node).right->data_type == TYPE_FLOAT) {
+    node->data_type = TYPE_FLOAT;
+    return true;
+  }
+
+  return false;
+}
+
 static void semantic_check(AstNode *node) {
   if (node == NULL) {
     printf("NULL node\n");
@@ -98,14 +114,11 @@ static void semantic_check(AstNode *node) {
     semantic_check(node->data.binaryop.left);
     semantic_check(node->data.binaryop.right);
 
-    if (node->data.binaryop.left->data_type != TYPE_INTEGER &&
-            node->data.binaryop.right->data_type != TYPE_INTEGER ||
-        node->data.binaryop.left->data_type != TYPE_FLOAT &&
-            node->data.binaryop.right->data_type != TYPE_FLOAT) {
+    if (!check_data_type(node)) {
       errorAt(node->line, "+", "can only add two integers/floats.");
     }
-    node->data_type = TYPE_INTEGER;
 
+    printf("%d\n", node->data_type);
     break;
   }
 
@@ -113,9 +126,7 @@ static void semantic_check(AstNode *node) {
     semantic_check(node->data.binaryop.left);
     semantic_check(node->data.binaryop.right);
 
-    if (node->data.binaryop.left->data_type != TYPE_INTEGER &&
-            node->data.binaryop.right->data_type != TYPE_INTEGER ||
-        node->data.binaryop.left->data_type) {
+    if (!check_data_type(node)) {
       errorAt(node->line, "-", "Can only subtract two integers/floats.");
     }
 
@@ -126,9 +137,7 @@ static void semantic_check(AstNode *node) {
     semantic_check(node->data.binaryop.left);
     semantic_check(node->data.binaryop.right);
 
-    if (node->data.binaryop.left->data_type != TYPE_INTEGER &&
-            node->data.binaryop.right->data_type != TYPE_INTEGER ||
-        node->data.binaryop.left->data_type) {
+    if (!check_data_type(node)) {
       errorAt(node->line, "*", "Can only mulitpy two integers/floats.");
     }
 
@@ -139,9 +148,7 @@ static void semantic_check(AstNode *node) {
     semantic_check(node->data.binaryop.left);
     semantic_check(node->data.binaryop.right);
 
-    if (node->data.binaryop.left->data_type != TYPE_INTEGER &&
-            node->data.binaryop.right->data_type != TYPE_INTEGER ||
-        node->data.binaryop.left->data_type) {
+    if (!check_data_type(node)) {
       errorAt(node->line, "/", "Can only divide two integers/floats.");
     }
 
@@ -157,6 +164,7 @@ static void semantic_check(AstNode *node) {
       errorAt(node->line,
               "==", "Can only compare two values of the same type.");
     }
+    node->data_type = TYPE_BOOLEAN;
 
     break;
   }
@@ -170,6 +178,7 @@ static void semantic_check(AstNode *node) {
       errorAt(node->line,
               "!=", "Can only compare two values of the same type.");
     }
+    node->data_type = TYPE_BOOLEAN;
 
     break;
   }
@@ -182,6 +191,7 @@ static void semantic_check(AstNode *node) {
         node->data.binaryop.right->data_type) {
       errorAt(node->line, ">", "Can only compare two values of the same type.");
     }
+    node->data_type = TYPE_BOOLEAN;
 
     break;
   }
@@ -195,6 +205,7 @@ static void semantic_check(AstNode *node) {
       errorAt(node->line,
               ">=", "Can only compare two values of the same type.");
     }
+    node->data_type = TYPE_BOOLEAN;
 
     break;
   }
@@ -207,6 +218,7 @@ static void semantic_check(AstNode *node) {
         node->data.binaryop.right->data_type) {
       errorAt(node->line, "<", "Can only compare two values of the same type.");
     }
+    node->data_type = TYPE_BOOLEAN;
 
     break;
   }
@@ -221,24 +233,29 @@ static void semantic_check(AstNode *node) {
               "<=", "Can only compare two values of the same type.");
     }
 
+    node->data_type = TYPE_BOOLEAN;
+
     break;
   }
 
   case AST_NEGATE: {
     semantic_check(node->data.unaryop.operand);
-
     if (node->data.unaryop.operand->data_type != TYPE_INTEGER) {
       errorAt(node->line, "-", "Can only negate intger type.");
     }
+    node->data_type = TYPE_INTEGER;
+
     break;
   }
 
   case AST_BANG: {
+    semantic_check(node->data.unaryop.operand);
     if (node->data.unaryop.operand->data_type != TYPE_BOOLEAN) {
       errorAt(node->line, "!", "Can only logical negate boolean type.");
     }
 
-    semantic_check(node->data.unaryop.operand);
+    node->data_type = TYPE_BOOLEAN;
+
     break;
   }
 
@@ -299,7 +316,8 @@ static void semantic_check(AstNode *node) {
     semantic_check(AS_VARIABLE_VALUE(node));
     if (node->data_type != AS_VARIABLE_VALUE(node)->data_type) {
       errorAt(AS_VARIABLE_VALUE(node)->line + 1, AS_VARIABLE_NAME(node),
-              "Cannot assign a value that is not equal to type definition");
+              "Cannot assign a value that is not equal to type "
+              "definition");
     }
 
     break;
@@ -330,8 +348,8 @@ static void semantic_check(AstNode *node) {
   }
 
   case AST_IF_STATEMNET: {
-    // semantic first because first you resolve the identifiers and then
-    // check their types
+    // semantic first because first you resolve the identifiers and
+    // then check their types
     semantic_check(node->data.if_stmt.condition);
     if (node->data.if_stmt.condition->data_type != TYPE_BOOLEAN) {
       errorAt(node->line, "if", "Condition must be of type boolean");
@@ -483,8 +501,8 @@ void semantic_analysis(AstNode *program) {
   semantic_check(program);
 
   if (!has_main_function(program)) {
-    printf(
-        "[Program] Error entry point: Program does not have main function\n");
+    printf("[Program] Error entry point: Program does not have main "
+           "function\n");
     exit(64);
   }
 

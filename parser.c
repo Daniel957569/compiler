@@ -309,7 +309,13 @@ static AstNode *call() {
 
 static AstNode *unary() {
   if (match(TOKEN_MINUS) || match(TOKEN_BANG)) {
-    AstNodeType unaryop = toNodeType(previous()->type);
+    AstNodeType unaryop;
+
+    if (previous()->type == TOKEN_BANG)
+      unaryop = AST_BANG;
+    else
+      unaryop = AST_NEGATE;
+
     AstNode *node = call();
     node = ast_create_binaryop(unaryop, node, NULL, current()->line);
     return node;

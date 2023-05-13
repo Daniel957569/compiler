@@ -5,6 +5,7 @@
 FILE *file;
 
 static FILE *open_file(const char *path) {
+
   FILE *fp;
   fp = fopen("code.asm", "w");
 
