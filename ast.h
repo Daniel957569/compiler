@@ -6,9 +6,11 @@
 #include <stddef.h>
 #include <sys/types.h>
 
-#define AS_LIST_SIZE(program) (program)->data.block.size
-#define AS_LIST_CAPACITY(program) (program)->data.block.capacity
 #define AS_LIST_ELEMENTS(program) (program)->data.block.elements
+#define AS_LIST_SIZE(program) AS_LIST_ELEMENTS(program)->size
+#define AS_LIST_CAPACITY(program) AS_LIST_ELEMENTS(program)->capacity
+#define AS_LIST_ELEMENT(program, index)                                        \
+  AS_LIST_ELEMENTS(program)->items[(index)]
 
 typedef enum {
   AST_INTEGER,

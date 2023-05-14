@@ -1,21 +1,10 @@
+const char* yoo "hello";
+const char* hi = yoo;
+
 int hello(int x, int b) {
-    int yo = 20;
-    let yo1 = 40;
-    let yo2 = 40;
-    let yo3 = 40;
-    let yo4 = 40;
-    let yo5 = 40;
-    let yo6 = 40;
-    let yo7 = 40;
-    let yo8 = 40;
-    let yo9 = 40;
-
-    if (x == 20) {
-        return 20;
-    }
-
-    while (yo == 20) {
-        yo++;
+    while (x < b) {
+    print yoo;
+        x++;
     }
 }
 

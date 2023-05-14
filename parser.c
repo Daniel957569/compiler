@@ -27,15 +27,7 @@ static void initParser(Token *tokens, AstNode *block) {
 
 static void free_parser() { free(parser.current_block); }
 
-static void free_tokens(Token *token) {
-  free(token);
-  /* int i = 0; */
-  /* while (token->type != TOKEN_EOF) { */
-  /*   i++; */
-  /*   token++; */
-  /* } */
-  /* printf("%d\n", i); */
-}
+static void free_tokens(Token *token) { free(token); }
 
 static void errorAt(Token *token, const char *message) {
   if (parser.inPanicMode)
@@ -439,6 +431,9 @@ static AstNode *while_statement() {
 }
 
 static AstNode *return_statement() {
+  if (match(TOKEN_SEMICOLON))
+    return ast_create_return_statement(TYPE_VOID, NULL, current()->line);
+
   AstNode *value = expr();
   consume(TOKEN_SEMICOLON, "Expected ';' after return value.");
   return ast_create_return_statement(value->data_type, value, current()->line);
@@ -524,11 +519,8 @@ AstNode *parse(Token *tokens) {
     push_ast_array(program->data.block.elements, declaration());
   }
 
-  semantic_analysis(program);
-
   print_ast(program, 0);
   free_parser();
-  free_tokens(tokens);
-  free_tree(program);
+  /* free_tree(program); */
   return program;
 }

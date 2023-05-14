@@ -1,19 +1,75 @@
 #include "codegen.h"
+#include "ast.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 FILE *file;
+Table *strings_table;
 
 static FILE *open_file(const char *path) {
 
   FILE *fp;
-  fp = fopen("code.asm", "w");
+  fp = fopen(path, "w");
 
   if (fp == NULL) {
     printf("Failed to open file at codegen\n");
     exit(64);
   }
   return fp;
+}
+
+static char *data_byte_size(DataType type) {
+  switch (type) {
+  case TYPE_INTEGER:
+  case TYPE_FLOAT:
+    return "dd";
+
+  case TYPE_BOOLEAN:
+    return "db";
+
+    // probabaly extract it and make it more personalize in the future
+  case TYPE_STRING:
+    return "db";
+
+  default:
+    printf("unknown at data_byte_size function at codegen.c\n");
+    return "-1";
+  }
+}
+
+static void generate_global_vars(AstNode *program) {
+  for (int i = 0; i < AS_LIST_SIZE(program); i++) {
+    if (AS_LIST_ELEMENT(program, i)->type != AST_LET_DECLARATION)
+      continue;
+
+    fprintf(file, "%s %s %s\n", AS_LIST_ELEMENT(program, i)->data.variable.name,
+            data_byte_size(AS_LIST_ELEMENT(program, i)->data_type), "0");
+  }
+}
+
+static void generate_strings() {
+  for (int i = 0; i < strings_table->capacity; i++) {
+    if (strings_table->entries[i].key != NULL) {
+      char var_name[20];
+      Entry entry = strings_table->entries[i];
+
+      sprintf(var_name, "string_%d", entry.hash % strings_table->capacity);
+      fprintf(file, "%s db %s, 0\n", var_name, entry.key);
+
+      strings_table->entries++;
+    }
+  }
+}
+
+static void setup_asm_file(AstNode *program) {
+  fprintf(file, "section .data\n");
+
+  generate_strings();
+  generate_global_vars(program);
+
+  fprintf(file, "\nsection .text\n"
+                "\tglobal _start\n\n"
+                "_start: ");
 }
 
 static void generate_asm(AstNode *node) {
@@ -108,7 +164,13 @@ static void generate_asm(AstNode *node) {
   }
 }
 
-void codegen(AstNode *program) {
-  file = open_file("code.asm");
+void codegen(AstNode *program, Table *string_table) {
+  file = open_file("../code.asm");
+  strings_table = string_table;
+
+  setup_asm_file(program);
+  printf("%s\n", file->_IO_buf_base);
+  fclose(file);
+
   generate_asm(program);
 }

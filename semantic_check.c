@@ -1,25 +1,30 @@
 #include "semantic_check.h"
 #include "./utils/table.h"
 #include "ast.h"
+#include "memory.h"
 #include "utils/array.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-EnvironmentArray *env_array;
-int current_scope = 0;
+// add clearer error messages, such as "return type 'integer' doesn't match
+// function return type 'String'"
 
-// cheap, fix later
+#define AS_TABLE(index) &env.env_array->items[(index)]->table
 
-// for some odd reason i cant make one in AST_IDENTIFIER_REFRENCE, cant be
-// bothered
-Symbol *identifier;
+typedef struct {
+  EnvironmentArray *env_array;
+  Table *string_table;
+  int current_scope;
+  AstNode *current_function;
+  bool has_error;
 
-bool is_function = false;
-bool has_error = false;
+} SemanticEnviroment;
+
+SemanticEnviroment env;
 
 static void errorAt(int line, const char *token, const char *message) {
-  has_error = true;
+  env.has_error = true;
   fprintf(stderr, "[line %d] Error", line - 1);
   fprintf(stderr, " at '%s'", token);
   fprintf(stderr, ": %s\n", message);
@@ -32,27 +37,36 @@ static void print_table(Table *table) {
   }
 }
 
+static void init_semantic_enviroment() {
+  env.current_scope = 0;
+  env.string_table = ALLOCATE(Table, 1);
+  init_table(env.string_table);
+  env.env_array = init_environment_array();
+  env.current_function = NULL;
+  env.has_error = false;
+}
+
 static void init_environment() {
   // free scopes that dont matter anymore.
   // {
   //  current_scope: 1
   // }
-  //
+  // {
+  //  current_scope: 1
   // {
   // here we dont care or need the last current_scope = 1
   // so need to free that data
-  //  current_scope: 1
-  // }
-  if (env_array->items[current_scope]->is_initialized && current_scope != 0) {
-    printf("free scope %d\n", current_scope);
-    free_table(&env_array->items[current_scope]->table);
+  if (env.env_array->items[env.current_scope]->is_initialized &&
+      env.current_scope != 0) {
+    printf("free scope %d\n", env.current_scope);
+    free_table(&env.env_array->items[env.current_scope]->table);
   }
 
   /* Environment *env = malloc(sizeof(Environment)); */
-  env_array->items[current_scope]->is_initialized = true;
-  env_array->items[current_scope]->current_scope = current_scope;
+  env.env_array->items[env.current_scope]->is_initialized = true;
+  env.env_array->items[env.current_scope]->current_scope = env.current_scope;
 
-  init_table(AS_TABLE(current_scope));
+  init_table(AS_TABLE(env.current_scope));
 }
 
 static bool has_main_function(AstNode *program) {
@@ -72,7 +86,7 @@ static bool has_main_function(AstNode *program) {
 static Symbol *init_symbol(AstNode *value, SymbolType type,
                            DataType data_type) {
   Symbol *symbol = malloc(sizeof(Symbol));
-  symbol->scope = current_scope;
+  symbol->scope = env.current_scope;
   symbol->value = value;
   symbol->type = type;
   symbol->data_type = data_type;
@@ -105,10 +119,19 @@ static void semantic_check(AstNode *node) {
     // skip literals
   case AST_INTEGER:
   case AST_FLOAT:
-  case AST_STRING:
+
   case AST_TRUE:
   case AST_FALSE:
     break;
+
+  case AST_STRING: {
+    // save strings for code generation to declare them.
+    const char *string = node->data.str;
+    table_set(env.string_table, string, hash_string(string, strlen(string)),
+              NULL);
+
+    break;
+  }
 
   case AST_ADD: {
     semantic_check(node->data.binaryop.left);
@@ -260,7 +283,21 @@ static void semantic_check(AstNode *node) {
   }
 
   case AST_RETURN_STATEMENT: {
-    printf("TODO: RETUUN STATEMENT\n");
+    // global scope
+    if (env.current_function == NULL) {
+      errorAt(node->line, "return", "Cannot return from global scope");
+    }
+
+    // incase return has void value, such as return;
+    if (node->data.return_stmt.value != NULL) {
+      semantic_check(node->data.return_stmt.value);
+    }
+
+    if (env.current_function->data_type != node->data_type) {
+      errorAt(node->line, "return",
+              "return type does not match function return type");
+    }
+
     break;
   }
 
@@ -268,10 +305,10 @@ static void semantic_check(AstNode *node) {
     // check for the variable assigning and change its data type to its
     // correct one if exist
 
-    identifier = init_symbol(NULL, VARIABLE_TYPE, TYPE_VOID);
+    Symbol *identifier = init_symbol(NULL, VARIABLE_TYPE, TYPE_VOID);
     bool hasDefinition = false;
 
-    for (int i = current_scope; i >= 0; i--) {
+    for (int i = env.current_scope; i >= 0; i--) {
       if (table_get(AS_TABLE(i), AS_VARIABLE_NAME(node), AS_VARIABLE_HASH(node),
                     identifier)) {
         node->data_type = identifier->data_type;
@@ -287,16 +324,16 @@ static void semantic_check(AstNode *node) {
               "Use of undeclared identifier.");
     }
 
-    identifier = NULL;
+    free(identifier);
     break;
   }
 
   case AST_VAR_ASSIGNMENT: {
     // add more in depth error messages later.
-    identifier = init_symbol(NULL, VARIABLE_TYPE, TYPE_VOID);
+    Symbol *identifier = init_symbol(NULL, VARIABLE_TYPE, TYPE_VOID);
 
     bool hasDefinition = false;
-    for (int i = current_scope; i >= 0; i--) {
+    for (int i = env.current_scope; i >= 0; i--) {
 
       if (table_get(AS_TABLE(i), AS_VARIABLE_NAME(node), AS_VARIABLE_HASH(node),
                     identifier)) {
@@ -320,11 +357,12 @@ static void semantic_check(AstNode *node) {
               "definition");
     }
 
+    free(identifier);
     break;
   }
 
   case AST_LET_DECLARATION: {
-    for (int i = current_scope; i >= 0; i--) {
+    for (int i = env.current_scope; i >= 0; i--) {
       if (table_contains(AS_TABLE(i), AS_VARIABLE_NAME(node),
                          AS_VARIABLE_HASH(node))) {
         errorAt(node->line, AS_VARIABLE_NAME(node),
@@ -333,7 +371,7 @@ static void semantic_check(AstNode *node) {
       }
     }
     // add variable name to the current scope table
-    table_set(AS_TABLE(current_scope), AS_VARIABLE_NAME(node),
+    table_set(AS_TABLE(env.current_scope), AS_VARIABLE_NAME(node),
               AS_VARIABLE_HASH(node),
               init_symbol(node, VARIABLE_TYPE, node->data_type));
 
@@ -348,6 +386,9 @@ static void semantic_check(AstNode *node) {
   }
 
   case AST_IF_STATEMNET: {
+    if (env.current_scope == 0) {
+      errorAt(node->line, "if", "Cannot declare if statement in global scope");
+    }
     // semantic first because first you resolve the identifiers and
     // then check their types
     semantic_check(node->data.if_stmt.condition);
@@ -366,8 +407,31 @@ static void semantic_check(AstNode *node) {
     break;
   }
 
+  case AST_WHILE_STATEMENT: {
+    if (env.current_scope == 0) {
+      errorAt(node->line, "while",
+              "Cannot declare while statement in global scope");
+    }
+    // semantic first because first you resolve the identifiers and
+    // then check their types
+    semantic_check(node->data.while_stmt.condition);
+    if (node->data.while_stmt.condition->data_type != TYPE_BOOLEAN) {
+      errorAt(node->line, "while", "Condition must be of type boolean");
+    }
+
+    // process then block of an while stmt
+    semantic_check(node->data.while_stmt.then_body);
+    break;
+  }
+
   case AST_FUNCTION: {
-    if (!table_set(AS_TABLE(current_scope), AS_FUNCTION_DECL(node).name,
+    // add function declaration inside a function if possible later on
+    if (env.current_scope != 0) {
+      errorAt(node->line, node->data.function_decl.name,
+              "Cannot define a function inside of a function");
+    }
+
+    if (!table_set(AS_TABLE(env.current_scope), AS_FUNCTION_DECL(node).name,
                    AS_FUNCTION_DECL(node).string_hash,
                    init_symbol(node, FUNCTION_TYPE, node->data_type))) {
 
@@ -376,13 +440,13 @@ static void semantic_check(AstNode *node) {
     }
 
     // start function scope here to fit in the parameters
-    current_scope++;
-    is_function = true;
+    env.current_scope++;
+    env.current_function = node;
 
     // add parameters to function scope
     init_environment();
     for (int i = 0; i < node->data.function_decl.parameters->size; i++) {
-      if (!table_set(AS_TABLE(current_scope), AS_PARAMETER(node, i)->name,
+      if (!table_set(AS_TABLE(env.current_scope), AS_PARAMETER(node, i)->name,
                      AS_PARAMETER(node, i)->hash,
                      init_symbol(NULL, PARAMETER_TYPE,
                                  AS_PARAMETER(node, i)->data_type))) {
@@ -392,6 +456,7 @@ static void semantic_check(AstNode *node) {
     }
 
     semantic_check(node->data.function_decl.body);
+    env.current_function = NULL;
 
     break;
   }
@@ -413,7 +478,7 @@ static void semantic_check(AstNode *node) {
 
     // check if there is definition of the function
     bool has_definition = false;
-    for (int i = current_scope; i >= 0; i--) {
+    for (int i = env.current_scope; i >= 0; i--) {
 
       if (table_get_function(AS_TABLE(i), AS_FUNCTION_CALL(node).name,
                              AS_FUNCTION_CALL(node).string_hash, identifier)) {
@@ -468,18 +533,16 @@ static void semantic_check(AstNode *node) {
   case AST_BLOCK: {
     // if its a function the block has already made to fit in the
     // parameters in the AST_FUNCTION
-    if (!is_function) {
-      current_scope++;
+    if (env.current_function == NULL) {
+      env.current_scope++;
       init_environment();
-    } else {
-      is_function = false;
     }
 
     for (int i = 0; i < node->data.block.elements->size; i++) {
       semantic_check(node->data.block.elements->items[i]);
     }
 
-    current_scope--;
+    env.current_scope--;
     break;
   }
   case AST_PROGRAM: {
@@ -495,9 +558,8 @@ static void semantic_check(AstNode *node) {
   }
 }
 
-void semantic_analysis(AstNode *program) {
-  env_array = init_environment_array();
-
+Table *semantic_analysis(AstNode *program) {
+  init_semantic_enviroment();
   semantic_check(program);
 
   if (!has_main_function(program)) {
@@ -506,10 +568,11 @@ void semantic_analysis(AstNode *program) {
     exit(64);
   }
 
-  if (has_error) {
+  if (env.has_error) {
     printf("Cannot compile due to errors.\n");
     exit(64);
   }
 
-  free_environment_array(env_array);
+  free_environment_array(env.env_array);
+  return env.string_table;
 }

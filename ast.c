@@ -1,17 +1,9 @@
 #include "ast.h"
+#include "./utils/table.h"
 #include "memory.h"
 #include "utils/array.h"
 #include <stdio.h>
 #include <string.h>
-
-static uint32_t hashString(const char *key, int length) {
-  uint32_t hash = 2166136261u;
-  for (int i = 0; i < length; i++) {
-    hash ^= (uint8_t)key[i];
-    hash *= 16777619;
-  }
-  return hash;
-}
 
 AstNode *ast_create_number(double value, int line) {
   AstNode *node = ALLOCATE(AstNode, 1);
@@ -76,7 +68,7 @@ AstNode *ast_create_identifier_refrence(const char *str, int line) {
   node->data_type = TYPE_VOID;
   node->type = AST_IDENTIFIER_REFRENCE;
   node->data.variable.name = str;
-  node->data.variable.string_hash = hashString(str, strlen(str));
+  node->data.variable.string_hash = hash_string(str, strlen(str));
   node->data.variable.value = NULL;
   return node;
 }
@@ -88,7 +80,7 @@ AstNode *ast_create_variable_stmt(AstNodeType type, DataType data_type,
   node->data_type = data_type;
   node->type = type;
   node->data.variable.value = value;
-  node->data.variable.string_hash = hashString(name, strlen(name));
+  node->data.variable.string_hash = hash_string(name, strlen(name));
   node->data.variable.name = name;
   return node;
 }
@@ -144,7 +136,7 @@ AstNode *ast_create_function_declaration(DataType type,
   node->data.function_decl.name = function_name;
   node->data.function_decl.body = function_body;
   node->data.function_decl.string_hash =
-      hashString(function_name, strlen(function_name));
+      hash_string(function_name, strlen(function_name));
   return node;
 }
 
@@ -157,7 +149,7 @@ AstNode *ast_create_function_call(const char *function_name,
   node->data.function_call.arguments = arguments;
   node->data.function_call.name = function_name;
   node->data.function_call.string_hash =
-      hashString(function_name, strlen(function_name));
+      hash_string(function_name, strlen(function_name));
   return node;
 }
 
@@ -174,7 +166,7 @@ Identifier *create_identifier(char *name, DataType type) {
   Identifier *identifier = ALLOCATE(Identifier, 1);
   identifier->name = name;
   identifier->data_type = type;
-  identifier->hash = hashString(name, strlen(name));
+  identifier->hash = hash_string(name, strlen(name));
   return identifier;
 }
 

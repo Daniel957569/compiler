@@ -19,6 +19,15 @@ void init_table(Table *table) {
   /* table->entries = ALLOCATE(Entry, 8); */
 }
 
+uint32_t hash_string(const char *key, int length) {
+  uint32_t hash = 2166136261u;
+  for (int i = 0; i < length; i++) {
+    hash ^= (uint8_t)key[i];
+    hash *= 16777619;
+  }
+  return hash;
+}
+
 static Entry *find_entry(Entry *entries, int capacity, const char *key,
                          u_int32_t hash) {
   uint32_t index = hash % capacity;

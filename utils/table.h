@@ -47,5 +47,6 @@ bool table_delete(Table *table, const char *key, u_int32_t hash);
 bool table_contains(Table *table, const char *key, u_int32_t hash);
 void table_add_all(Table *from, Table *to);
 void free_table(Table *table);
+uint32_t hash_string(const char *key, int length);
 
 #endif

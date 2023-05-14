@@ -18,8 +18,6 @@
 
 #define AS_BINARYOP(node) (node)->data.binaryop
 
-#define AS_TABLE(index) &env_array->items[(index)]->table
-
 /* typedef struct Symbol { */
 /*   AstNode *value; */
 /*   int scope; */
@@ -33,6 +31,6 @@ typedef struct Environment {
   bool is_initialized;
 } Environment;
 
-void semantic_analysis(AstNode *program);
+Table *semantic_analysis(AstNode *program);
 
 #endif

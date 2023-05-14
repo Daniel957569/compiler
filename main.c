@@ -1,10 +1,14 @@
 #include "ast.h"
 #include "codegen.h"
+#include "memory.h"
 #include "parser.h"
 #include "scanner.h"
+#include "semantic_check.h"
 #include "tests/test_parser.h"
 #include "tests/test_scanner.h"
+#include "utils/array.h"
 #include "utils/file.h"
+#include "utils/table.h"
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -29,13 +33,16 @@ static Token *run_scanner(const char *path) {
   return tokens;
 }
 
-static AstNode *run_parser(Token *tokens) {
+static AstNode *run_parser(Token *tokens, Table *string_table) {
   clock_t start_time, end_time;
   double cpu_time_used;
 
   start_time = clock();
 
   AstNode *program = parse(tokens);
+  *string_table = *semantic_analysis(program);
+
+  free(tokens);
 
   end_time = clock();
   cpu_time_used = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
@@ -48,12 +55,28 @@ static AstNode *run_parser(Token *tokens) {
   return program;
 }
 
-static void run_codegen() {}
+static void run_codegen(AstNode *program, Table *string_table) {
+  clock_t start_time, end_time;
+  double cpu_time_used;
+
+  start_time = clock();
+
+  codegen(program, string_table);
+
+  end_time = clock();
+  cpu_time_used = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+
+  printf("\n---------------------------------------\n"
+         "Time taken by Codegen: %f Seconds\n"
+         "---------------------------------------\n\n",
+         cpu_time_used);
+}
 
 static void runFile(const char *path) {
+  Table string_table;
   Token *tokens = run_scanner(path);
-  AstNode *program = run_parser(tokens);
-  codegen(program);
+  AstNode *program = run_parser(tokens, &string_table);
+  run_codegen(program, &string_table);
 }
 
 int main(int argc, const char *argv[]) {

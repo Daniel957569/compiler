@@ -2,6 +2,7 @@
 #define CODEGEN_H
 
 #include "ast.h"
-void codegen(AstNode *program);
+#include "utils/table.h"
+void codegen(AstNode *program, Table *string_table);
 
 #endif
