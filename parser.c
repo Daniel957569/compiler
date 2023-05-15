@@ -25,8 +25,6 @@ static void initParser(Token *tokens, AstNode *block) {
   parser.inPanicMode = false;
 }
 
-static void free_parser() { free(parser.current_block); }
-
 static void free_tokens(Token *token) { free(token); }
 
 static void errorAt(Token *token, const char *message) {
@@ -520,7 +518,6 @@ AstNode *parse(Token *tokens) {
   }
 
   print_ast(program, 0);
-  free_parser();
   /* free_tree(program); */
   return program;
 }

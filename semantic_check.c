@@ -324,6 +324,8 @@ static void semantic_check(AstNode *node) {
               "Use of undeclared identifier.");
     }
 
+    node->data.variable.is_global = identifier->scope == 0 ? true : false;
+
     free(identifier);
     break;
   }
@@ -424,43 +426,6 @@ static void semantic_check(AstNode *node) {
     break;
   }
 
-  case AST_FUNCTION: {
-    // add function declaration inside a function if possible later on
-    if (env.current_scope != 0) {
-      errorAt(node->line, node->data.function_decl.name,
-              "Cannot define a function inside of a function");
-    }
-
-    if (!table_set(AS_TABLE(env.current_scope), AS_FUNCTION_DECL(node).name,
-                   AS_FUNCTION_DECL(node).string_hash,
-                   init_symbol(node, FUNCTION_TYPE, node->data_type))) {
-
-      errorAt(node->line, node->data.function_decl.name,
-              "Cannot redefine function.");
-    }
-
-    // start function scope here to fit in the parameters
-    env.current_scope++;
-    env.current_function = node;
-
-    // add parameters to function scope
-    init_environment();
-    for (int i = 0; i < node->data.function_decl.parameters->size; i++) {
-      if (!table_set(AS_TABLE(env.current_scope), AS_PARAMETER(node, i)->name,
-                     AS_PARAMETER(node, i)->hash,
-                     init_symbol(NULL, PARAMETER_TYPE,
-                                 AS_PARAMETER(node, i)->data_type))) {
-        errorAt(node->line, node->data.function_decl.name,
-                "Cannot redefine parameters.");
-      }
-    }
-
-    semantic_check(node->data.function_decl.body);
-    env.current_function = NULL;
-
-    break;
-  }
-
   case AST_FUNCTION_CALL: {
 #ifndef FUNCTION_CALL
 #define FUNCTION_CALL
@@ -530,9 +495,47 @@ static void semantic_check(AstNode *node) {
     break;
   }
 
+  case AST_FUNCTION: {
+    // add function declaration inside a function if possible later on
+    if (env.current_scope != 0) {
+      errorAt(node->line, node->data.function_decl.name,
+              "Cannot define a function inside of a function");
+    }
+
+    if (!table_set(AS_TABLE(env.current_scope), AS_FUNCTION_DECL(node).name,
+                   AS_FUNCTION_DECL(node).string_hash,
+                   init_symbol(node, FUNCTION_TYPE, node->data_type))) {
+
+      errorAt(node->line, node->data.function_decl.name,
+              "Cannot redefine function.");
+    }
+
+    // start function scope here to fit in the parameters
+    env.current_scope++;
+    env.current_function = node;
+
+    // add parameters to function scope
+    init_environment();
+    for (int i = 0; i < node->data.function_decl.parameters->size; i++) {
+      if (!table_set(AS_TABLE(env.current_scope), AS_PARAMETER(node, i)->name,
+                     AS_PARAMETER(node, i)->hash,
+                     init_symbol(NULL, PARAMETER_TYPE,
+                                 AS_PARAMETER(node, i)->data_type))) {
+        errorAt(node->line, node->data.function_decl.name,
+                "Cannot redefine parameters.");
+      }
+    }
+
+    semantic_check(node->data.function_decl.body);
+    env.current_function = NULL;
+
+    break;
+  }
+
   case AST_BLOCK: {
     // if its a function the block has already made to fit in the
     // parameters in the AST_FUNCTION
+
     if (env.current_function == NULL) {
       env.current_scope++;
       init_environment();

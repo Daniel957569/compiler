@@ -69,6 +69,7 @@ AstNode *ast_create_identifier_refrence(const char *str, int line) {
   node->type = AST_IDENTIFIER_REFRENCE;
   node->data.variable.name = str;
   node->data.variable.string_hash = hash_string(str, strlen(str));
+  node->data.variable.is_global = false;
   node->data.variable.value = NULL;
   return node;
 }
@@ -81,6 +82,7 @@ AstNode *ast_create_variable_stmt(AstNodeType type, DataType data_type,
   node->type = type;
   node->data.variable.value = value;
   node->data.variable.string_hash = hash_string(name, strlen(name));
+  node->data.variable.is_global = false;
   node->data.variable.name = name;
   return node;
 }
