@@ -6,6 +6,8 @@
 FILE *file;
 Table *strings_table;
 
+static void generate_asm(AstNode *program);
+
 static FILE *open_file(const char *path) {
 
   FILE *fp;
@@ -99,6 +101,10 @@ static void setup_asm_file(AstNode *program) {
                 "   jmp end\n");
 
   fprintf(file, "\n_start:\n");
+  generate_asm(program);
+  fprintf(file, "\n   cmp rcx, 11\n"
+                "   je print_equal\n"
+                "   jmp print_not_equal\n");
 }
 
 static void generate_asm(AstNode *node) {
@@ -122,67 +128,141 @@ static void generate_asm(AstNode *node) {
     // Handle false node
     break;
   case AST_ADD:
-    generate_asm(node->data.binaryop.left);
-    generate_asm(node->data.binaryop.right);
+    if (node->data.binaryop.left->type != AST_INTEGER &&
+        node->data.binaryop.right->type != AST_INTEGER) {
+      generate_asm(node->data.binaryop.left);
+      generate_asm(node->data.binaryop.right);
+      break;
+    }
 
-    if (node->data.binaryop.left->type == AST_INTEGER) {
-      fprintf(file, "   add rax, %d\n",
+    if (node->data.binaryop.left->type == AST_INTEGER &&
+        node->data.binaryop.right->type != AST_INTEGER) {
+
+      generate_asm(node->data.binaryop.right);
+      fprintf(file, "   add rcx, %d\n",
               node->data.binaryop.left->data.integer_val);
+      break;
     }
 
-    if (node->data.binaryop.right->type == AST_INTEGER) {
-      fprintf(file, "   add rax, %d\n",
+    if (node->data.binaryop.left->type != AST_INTEGER &&
+        node->data.binaryop.right->type == AST_INTEGER) {
+      generate_asm(node->data.binaryop.left);
+      fprintf(file, "   add rcx, %d\n",
               node->data.binaryop.right->data.integer_val);
+      break;
     }
+    fprintf(file, "   add rcx, %d\n",
+            node->data.binaryop.left->data.integer_val);
+    fprintf(file, "   add rcx, %d\n",
+            node->data.binaryop.right->data.integer_val);
 
     break;
   case AST_SUBTRACT:
-    generate_asm(node->data.binaryop.left);
-    generate_asm(node->data.binaryop.right);
-
-    if (node->data.binaryop.left->type == AST_INTEGER) {
-      fprintf(file, "   sub rax, %d\n",
-              node->data.binaryop.left->data.integer_val);
-    } else {
+    if (node->data.binaryop.left->type != AST_INTEGER &&
+        node->data.binaryop.right->type != AST_INTEGER) {
       generate_asm(node->data.binaryop.left);
+      generate_asm(node->data.binaryop.right);
+      break;
     }
 
-    if (node->data.binaryop.right->type == AST_INTEGER) {
-      fprintf(file, "   sub rax, %d\n",
-              node->data.binaryop.right->data.integer_val);
+    if (node->data.binaryop.left->type == AST_INTEGER &&
+        node->data.binaryop.right->type != AST_INTEGER) {
+
+      generate_asm(node->data.binaryop.right);
+      fprintf(file, "   sub rcx, %d\n",
+              node->data.binaryop.left->data.integer_val);
+      break;
     }
+
+    if (node->data.binaryop.left->type != AST_INTEGER &&
+        node->data.binaryop.right->type == AST_INTEGER) {
+      generate_asm(node->data.binaryop.left);
+      fprintf(file, "   sub rcx, %d\n",
+              node->data.binaryop.right->data.integer_val);
+      break;
+    }
+    fprintf(file, "   sub rcx, %d\n",
+            node->data.binaryop.left->data.integer_val);
+    fprintf(file, "   sub rcx, %d\n",
+            node->data.binaryop.right->data.integer_val);
 
     break;
   case AST_MULTIPLY:
-    generate_asm(node->data.binaryop.left);
-    generate_asm(node->data.binaryop.right);
+    if (node->data.binaryop.left->type != AST_INTEGER &&
+        node->data.binaryop.right->type != AST_INTEGER) {
+      generate_asm(node->data.binaryop.left);
+      generate_asm(node->data.binaryop.right);
+      break;
+    }
 
-    if (node->data.binaryop.left->type == AST_INTEGER) {
-      fprintf(file, "   mov rax, %d\n",
+    if (node->data.binaryop.left->type == AST_INTEGER &&
+        node->data.binaryop.right->type != AST_INTEGER) {
+
+      generate_asm(node->data.binaryop.right);
+      fprintf(file, "   imul rcx, %d\n",
               node->data.binaryop.left->data.integer_val);
+      break;
     }
 
-    if (node->data.binaryop.right->type == AST_INTEGER) {
-      fprintf(file, "   imul rax, %d\n",
+    if (node->data.binaryop.left->type != AST_INTEGER &&
+        node->data.binaryop.right->type == AST_INTEGER) {
+      generate_asm(node->data.binaryop.left);
+      fprintf(file, "   imul rcx, %d\n",
               node->data.binaryop.right->data.integer_val);
+      break;
     }
+    fprintf(file, "   add rcx, %d\n",
+            node->data.binaryop.left->data.integer_val);
+    fprintf(file, "   imul rcx, %d\n",
+            node->data.binaryop.right->data.integer_val);
 
     break;
   case AST_DIVIDE:
-    generate_asm(node->data.binaryop.left);
-    generate_asm(node->data.binaryop.right);
 
-    if (node->data.binaryop.left->type == AST_INTEGER) {
-      fprintf(file, "   mov rax, %d\n",
-              node->data.binaryop.left->data.integer_val);
+    if (node->data.binaryop.left->type != AST_INTEGER &&
+        node->data.binaryop.right->type != AST_INTEGER) {
+      generate_asm(node->data.binaryop.left);
+      generate_asm(node->data.binaryop.right);
+      break;
     }
 
-    if (node->data.binaryop.right->type == AST_INTEGER) {
+    if (node->data.binaryop.left->type == AST_INTEGER &&
+        node->data.binaryop.right->type != AST_INTEGER) {
+
+      generate_asm(node->data.binaryop.right);
       fprintf(file,
+              "   mov rax, rcx\n"
               "   mov rbx, %d\n"
-              "   idiv rax\n",
-              node->data.binaryop.right->data.integer_val);
+              "   idiv rax\n"
+              "   mov rcx, rax\n"
+              "   xor rax, rax\n",
+              node->data.binaryop.left->data.integer_val);
+      break;
     }
+
+    if (node->data.binaryop.left->type != AST_INTEGER &&
+        node->data.binaryop.right->type == AST_INTEGER) {
+      generate_asm(node->data.binaryop.left);
+
+      fprintf(file,
+              "   mov rax, rcx\n"
+              "   mov rbx, %d\n"
+              "   idiv rbx\n"
+              "   mov rcx, rax\n"
+              "   xor rax, rax\n",
+              node->data.binaryop.right->data.integer_val);
+      break;
+    }
+
+    fprintf(file, "   add rax, %d\n",
+            node->data.binaryop.left->data.integer_val);
+
+    fprintf(file,
+            "   mov rbx, %d\n"
+            "   idiv rbx\n"
+            "   mov rcx, rax\n"
+            "   xor rax, rax\n",
+            node->data.binaryop.right->data.integer_val);
     // Handle divide node
     break;
   case AST_EQUAL_EQUAL:
@@ -252,11 +332,6 @@ void codegen(AstNode *program, Table *string_table) {
   strings_table = string_table;
 
   setup_asm_file(program);
-  generate_asm(program);
-
-  fprintf(file, "\n   cmp rax, 10\n"
-                "   je print_equal\n"
-                "   jmp print_not_equal\n");
 
   printf("%s\n", file->_IO_buf_base);
   fclose(file);
