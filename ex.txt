@@ -1,13 +1,4 @@
-const char* yoo "hello";
-const char* hi = yoo;
+let x: int =   50 + 10 * 11 / 1 * 10 + 10;
 
-int hello(int x, int b) {
-    while (x < b) {
-    print yoo;
-        x++;
-    }
-}
-
-int main() {
-    hello(10, 20);
+fun main(): int {
 }
