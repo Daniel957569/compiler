@@ -6,6 +6,7 @@
 FILE *file;
 Table *strings_table;
 int result;
+int depth;
 
 static void generate_asm(AstNode *program);
 
@@ -104,7 +105,8 @@ static void setup_asm_file(AstNode *program) {
   fprintf(file, "\n_start:\n");
   generate_asm(program);
   fprintf(file,
-          "\n   cmp r8, %d\n"
+          "\n   pop r8\n"
+          "   cmp r8, %d\n"
           "   je print_equal\n"
           "   jmp print_not_equal\n",
           result);
@@ -136,6 +138,11 @@ static void generate_asm(AstNode *node) {
 
       generate_asm(AS_BINARYOP_LEFT(node));
       generate_asm(AS_BINARYOP_RIGHT(node));
+
+      fprintf(file, "   pop r9\n"
+                    "   pop r10\n"
+                    "   add r9, r10\n"
+                    "   push r9\n\n");
       break;
     }
 
@@ -143,7 +150,11 @@ static void generate_asm(AstNode *node) {
         AS_BINARYOP_RIGHT(node)->type != AST_INTEGER) {
 
       generate_asm(AS_BINARYOP_RIGHT(node));
-      fprintf(file, "   add r8, %d\n\n",
+      fprintf(file,
+              "   pop r9\n"
+              "   mov r8, r9\n"
+              "   add r8, %d\n"
+              "   push r8\n\n",
               AS_BINARYOP_LEFT(node)->data.integer_val);
       break;
     }
@@ -152,14 +163,19 @@ static void generate_asm(AstNode *node) {
         AS_BINARYOP_RIGHT(node)->type == AST_INTEGER) {
 
       generate_asm(AS_BINARYOP_LEFT(node));
-      fprintf(file, "   add r8, %d\n\n",
+      fprintf(file,
+              "   pop r9\n"
+              "   mov r8, r9\n"
+              "   add r8, %d\n"
+              "   push r8\n\n",
               AS_BINARYOP_RIGHT(node)->data.integer_val);
       break;
     }
 
     fprintf(file,
+            "   mov r8, %d\n"
             "   add r8, %d\n"
-            "   add r8, %d\n\n",
+            "   push r8\n\n",
             AS_BINARYOP_LEFT(node)->data.integer_val,
             AS_BINARYOP_RIGHT(node)->data.integer_val);
 
@@ -170,6 +186,11 @@ static void generate_asm(AstNode *node) {
 
       generate_asm(AS_BINARYOP_LEFT(node));
       generate_asm(AS_BINARYOP_RIGHT(node));
+
+      fprintf(file, "   pop r10\n"
+                    "   pop r9\n"
+                    "   sub r9, r10\n"
+                    "   push r9\n\n");
       break;
     }
 
@@ -177,7 +198,11 @@ static void generate_asm(AstNode *node) {
         AS_BINARYOP_RIGHT(node)->type != AST_INTEGER) {
 
       generate_asm(AS_BINARYOP_RIGHT(node));
-      fprintf(file, "   sub r8, %d\n\n",
+      fprintf(file,
+              "   pop r9\n"
+              "   mov r8, r9\n"
+              "   sub r8, %d\n"
+              "   push r8\n\n",
               AS_BINARYOP_LEFT(node)->data.integer_val);
       break;
     }
@@ -186,14 +211,19 @@ static void generate_asm(AstNode *node) {
         AS_BINARYOP_RIGHT(node)->type == AST_INTEGER) {
 
       generate_asm(AS_BINARYOP_LEFT(node));
-      fprintf(file, "   sub r8, %d\n\n",
+      fprintf(file,
+              "   pop r9\n"
+              "   mov r8, r9\n"
+              "   sub r8, %d\n"
+              "   push r8\n\n",
               AS_BINARYOP_RIGHT(node)->data.integer_val);
       break;
     }
 
     fprintf(file,
+            "   mov r8, %d\n"
             "   sub r8, %d\n"
-            "   sub r8, %d\n\n",
+            "   push r8\n\n",
             AS_BINARYOP_LEFT(node)->data.integer_val,
             AS_BINARYOP_RIGHT(node)->data.integer_val);
 
@@ -204,6 +234,11 @@ static void generate_asm(AstNode *node) {
 
       generate_asm(AS_BINARYOP_LEFT(node));
       generate_asm(AS_BINARYOP_RIGHT(node));
+
+      fprintf(file, "   pop r9\n"
+                    "   pop r10\n"
+                    "   imul r9, r10\n"
+                    "   push r9\n\n");
       break;
     }
 
@@ -211,7 +246,10 @@ static void generate_asm(AstNode *node) {
         AS_BINARYOP_RIGHT(node)->type != AST_INTEGER) {
 
       generate_asm(AS_BINARYOP_RIGHT(node));
-      fprintf(file, "   imul r8, %d\n\n",
+      fprintf(file,
+              "   pop r9\n"
+              "   imul r9, %d\n"
+              "   push r9\n\n",
               AS_BINARYOP_LEFT(node)->data.integer_val);
       break;
     }
@@ -220,16 +258,18 @@ static void generate_asm(AstNode *node) {
         AS_BINARYOP_RIGHT(node)->type == AST_INTEGER) {
 
       generate_asm(AS_BINARYOP_LEFT(node));
-      fprintf(file, "   imul r8, %d\n\n",
+      fprintf(file,
+              "   pop r9\n"
+              "   imul r9, %d\n"
+              "   push r9\n\n",
               AS_BINARYOP_RIGHT(node)->data.integer_val);
       break;
     }
 
     fprintf(file,
-            "   mov rax, %d\n"
-            "   imul r9, rax, %d\n"
-            "   add r8, r9\n"
-            "   xor r9, r9\n\n",
+            "   mov r9, %d\n"
+            "   imul r9, %d\n"
+            "   push r9\n\n",
             AS_BINARYOP_LEFT(node)->data.integer_val,
             AS_BINARYOP_RIGHT(node)->data.integer_val);
 
@@ -240,6 +280,11 @@ static void generate_asm(AstNode *node) {
 
       generate_asm(AS_BINARYOP_LEFT(node));
       generate_asm(AS_BINARYOP_RIGHT(node));
+
+      fprintf(file, "   pop rax\n"
+                    "   pop r9\n"
+                    "   idiv r9\n"
+                    "   push rax\n\n");
       break;
     }
 
@@ -248,9 +293,10 @@ static void generate_asm(AstNode *node) {
 
       generate_asm(AS_BINARYOP_RIGHT(node));
       fprintf(file,
+              "   pop r9\n"
               "   mov rax, %d\n"
-              "   idiv r8\n"
-              "   add r8, rax\n\n",
+              "   idiv r9\n"
+              "   push rax\n\n",
               AS_BINARYOP_LEFT(node)->data.integer_val);
       break;
     }
@@ -260,21 +306,23 @@ static void generate_asm(AstNode *node) {
 
       generate_asm(AS_BINARYOP_LEFT(node));
       fprintf(file,
-              "   mov rax, %d\n"
-              "   idiv r8\n"
-              "   add r8, rax\n\n",
+              "   pop rax\n"
+              "   mov r9, %d\n"
+              "   idiv r9\n"
+              "   push rax\n\n",
               AS_BINARYOP_RIGHT(node)->data.integer_val);
       break;
     }
 
     fprintf(file,
-            "   mov r9, %d\n"
             "   mov rax, %d\n"
+            "   mov r9, %d\n"
             "   idiv r9\n"
-            "   add r8, rax\n"
-            "   xor r9, r9\n\n",
+            "   push rax\n\n",
             AS_BINARYOP_LEFT(node)->data.integer_val,
             AS_BINARYOP_RIGHT(node)->data.integer_val);
+
+    break;
 
     break;
 
@@ -305,6 +353,7 @@ static void generate_asm(AstNode *node) {
     // Handle negate node
     break;
   case AST_LET_DECLARATION:
+    fprintf(file, "   push 0\n");
     generate_asm(node->data.variable.value);
     // Handle let declaration node
     break;
@@ -374,7 +423,7 @@ static int evaluate(AstNode *node) {
 }
 
 void codegen(AstNode *program, Table *string_table) {
-  file = open_file("../code.asm");
+  file = open_file("./code.asm");
   strings_table = string_table;
 
   result =
@@ -384,5 +433,5 @@ void codegen(AstNode *program, Table *string_table) {
   printf("%s\n", file->_IO_buf_base);
   fclose(file);
 
-  system("nasm -f elf64 ../code.asm && ld code.o -o code && ./code");
+  system("nasm -f elf64 ./code.asm && ld code.o -o code && ./code");
 }

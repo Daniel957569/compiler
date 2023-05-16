@@ -34,22 +34,51 @@ print_not_equal:
    jmp end
 
 _start:
+   push 0
    mov rax, 10
-   imul r9, rax, 11
-   add r8, r9
-   xor r9, r9
+   mov r9, 10
+   idiv r9
+   push rax
 
-   mov rax, 1
-   idiv r8
-   add r8, rax
-
-   imul r8, 10
-
-   add r8, 50
-
+   pop r9
+   mov r8, r9
    add r8, 10
+   push r8
+
+   mov r9, 20
+   imul r9, 40
+   push r9
+
+   pop r9
+   pop r10
+   add r9, r10
+   push r9
+
+   mov r9, 20
+   imul r9, 40
+   push r9
+
+   pop r9
+   imul r9, 30
+   push r9
+
+   pop r9
+   pop r10
+   add r9, r10
+   push r9
+
+   pop r9
+   mov r8, r9
+   add r8, 20
+   push r8
+
+   pop r9
+   mov r8, r9
+   sub r8, 40
+   push r8
 
 
-   cmp r8, 1160
+   pop r8
+   cmp r8, 24791
    je print_equal
    jmp print_not_equal
