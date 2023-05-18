@@ -6,6 +6,7 @@ section .data
 ; Strings
 
 ; global variabless
+yfdsfds dd 0
 x dd 0
 
 section .text
@@ -32,53 +33,87 @@ print_not_equal:
    mov rdx, len_not_equal
    syscall
    jmp end
+   push 0
+   push 0
 
 _start:
-   push 0
-   mov rax, 10
+
+; start of yfdsfds
+   mov r9, 10
+   imul r9, 10
+   push r9
+
+   mov r9, 10
+   imul r9, 10
+   push r9
+
+   pop r9
+   pop r10
+   add r9, r10
+   push r9
+
+   mov r9, 10
+   imul r9, 10
+   push r9
+
+   pop rax
    mov r9, 10
    idiv r9
    push rax
 
    pop r9
-   mov r8, r9
-   add r8, 10
-   push r8
-
-   mov r9, 20
-   imul r9, 40
+   imul r9, 10
    push r9
 
    pop r9
    pop r10
    add r9, r10
    push r9
-
-   mov r9, 20
-   imul r9, 40
-   push r9
-
-   pop r9
-   imul r9, 30
-   push r9
-
-   pop r9
-   pop r10
-   add r9, r10
-   push r9
-
-   pop r9
-   mov r8, r9
-   add r8, 20
-   push r8
-
-   pop r9
-   mov r8, r9
-   sub r8, 40
-   push r8
-
 
    pop r8
-   cmp r8, 24791
+   mov [yfdsfds], r8
+
+; end of yfdsfds
+
+
+; start of x
+   mov r9, 10
+   imul r9, 10
+   push r9
+
+   mov r9, 10
+   imul r9, 10
+   push r9
+
+   pop r9
+   pop r10
+   add r9, r10
+   push r9
+
+   mov r9, 10
+   imul r9, 10
+   push r9
+
+   pop rax
+   mov r9, 10
+   idiv r9
+   push rax
+
+   pop r9
+   imul r9, 10
+   push r9
+
+   pop r9
+   pop r10
+   add r9, r10
+   push r9
+
+   pop r8
+   mov [x], r8
+
+; end of x
+
+
+   cmp DWORD [x], 300
    je print_equal
    jmp print_not_equal

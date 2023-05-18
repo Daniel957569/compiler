@@ -117,6 +117,32 @@ void push_environment_array(EnvironmentArray *arr, struct Environment *env) {
   arr->size++;
 }
 
+StringArray *init_string_array() {
+  StringArray *array = ALLOCATE(StringArray, 1);
+  array->capacity = 8;
+  array->size = 0;
+  array->items = ALLOCATE(String *, 8);
+  return array;
+}
+
+void push_string_array(StringArray *arr, String *string) {
+  if (arr->capacity == arr->size) {
+    arr->items =
+        GROW_ARRAY(String *, arr->items, arr->capacity, arr->capacity * 1.5);
+    arr->capacity *= 1.5;
+  }
+
+  arr->items[arr->size] = string;
+  arr->size++;
+}
+
+void free_string_array(StringArray *arr) {
+  for (int i = 0; i < arr->size; i++) {
+    free_string(arr->items[i]);
+  }
+  free(arr);
+}
+
 void free_environment_array(EnvironmentArray *arr) {
   for (int i = 0; i < arr->size; i++) {
     free_table(&arr->items[i]->table);
@@ -125,4 +151,30 @@ void free_environment_array(EnvironmentArray *arr) {
 
   free(arr->items);
   free(arr);
+}
+
+String *init_string() {
+  String *string = ALLOCATE(String, 1);
+  string->capacity = 0;
+  string->size = 0;
+  string->content = ALLOCATE(char, 1000);
+  memset(string->content, 0, 1000);
+  return string;
+}
+
+void allocate_to_string(String *to_string, char *copy_string) {
+  if (to_string->capacity <= strlen(copy_string)) {
+    to_string->content =
+        GROW_ARRAY(char, to_string->content, to_string->capacity,
+                   strlen(copy_string) + to_string->capacity + 1000);
+    to_string->capacity =
+        strlen(to_string->content) + strlen(copy_string) + 1000;
+  }
+  strcat(to_string->content, copy_string);
+  to_string->size = strlen(to_string->content);
+}
+
+void free_string(String *str) {
+  free(str->content);
+  free(str);
 }
