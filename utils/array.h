@@ -64,6 +64,7 @@ void free_environment_array(EnvironmentArray *arr);
 
 StringArray *init_string_array();
 void push_string_array(StringArray *arr, String *string);
+void pop_string_array(StringArray *arr);
 void free_string_array(StringArray *arr);
 
 String *init_string();

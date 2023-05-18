@@ -152,6 +152,36 @@ static void setup_asm_file(AstNode *program) {
           result);
 }
 
+static void generate_condition(AstNode *node) {
+  switch (node->type) {
+  case AST_INTEGER:
+    fprintf(codegen_env.file, "    push %d\n", node->data.integer_val);
+    break;
+
+  case AST_TRUE:
+    fprintf(codegen_env.file, "    push 1");
+    break;
+
+  case AST_FALSE:
+    fprintf(codegen_env.file, "    push 0");
+    break;
+
+  case AST_IDENTIFIER_REFRENCE:
+    // check later if global or local
+    fprintf(codegen_env.file, "    push [%s]", node->data.identifier_refrence);
+    break;
+
+  case AST_FLOAT:
+    // later
+    break;
+
+    break;
+  default:
+    printf("error at generate_condition at codegen.c file.");
+    break;
+  }
+}
+
 static void generate_asm(AstNode *node) {
   switch (node->type) {
   case AST_INTEGER:
@@ -371,8 +401,18 @@ static void generate_asm(AstNode *node) {
     // Handle divide node
     break;
   case AST_EQUAL_EQUAL:
-    // Handle equal equal node
+    printf("%s\n", codegen_env.string_block_array->items[0]->content);
+    generate_asm(node->data.binaryop.left);
+    generate_asm(node->data.binaryop.right);
+    printf("%s\n", codegen_env.string_block_array->items[0]->content);
+    fprintf(codegen_env.file,
+            "\n%s \n"
+            "\n    pop r8\n"
+            "     pop r9\n"
+            "     cmp r8, r9",
+            codegen_env.string_block_array->items[0]->content);
     break;
+
   case AST_BANG:
     // Handle bang node
     break;
@@ -399,31 +439,42 @@ static void generate_asm(AstNode *node) {
             node->data.unaryop.operand->data.integer_val);
     break;
   case AST_LET_DECLARATION:
+    // incase it is the first in the function so it
+    // doesn't pop arbitary number
     fprintf(codegen_env.file, "   push 0\n");
+
     generate_asm(node->data.variable.value);
-    // Handle let declaration node
+
     break;
+
   case AST_VAR_ASSIGNMENT:
-    // Handle variable assignment node
     break;
+
   case AST_IF_STATEMNET:
-    // Handle if statement node
+    generate_asm(node->data.if_stmt.condition);
+
     break;
+
   case AST_WHILE_STATEMENT:
-    // Handle while statement node
     break;
+
   case AST_RETURN_STATEMENT:
-    // Handle return statement node
     break;
+
   case AST_CONTINUE_STATEMENT:
-    // Handle continue statement node
+
     break;
+
   case AST_FUNCTION:
-    // Handle function node
+    fprintf(codegen_env.file, "\n%s:\n", node->data.function_decl.name);
+
+    generate_asm(node->data.function_decl.body);
+
     break;
+
   case AST_FUNCTION_CALL:
-    // Handle function call node
     break;
+
   case AST_PROGRAM:
     for (int i = 0; i < node->data.block.elements->size; i++) {
       // global variables
@@ -437,6 +488,9 @@ static void generate_asm(AstNode *node) {
     // Handle program node
     break;
   case AST_BLOCK:
+    for (int i = 0; i < node->data.block.elements->size; i++) {
+      generate_asm(node->data.block.elements->items[i]);
+    }
     // Handle block node
     break;
   default:

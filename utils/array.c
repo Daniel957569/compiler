@@ -126,7 +126,7 @@ StringArray *init_string_array() {
 }
 
 void push_string_array(StringArray *arr, String *string) {
-  if (arr->capacity == arr->size) {
+  if (arr->capacity <= arr->size) {
     arr->items =
         GROW_ARRAY(String *, arr->items, arr->capacity, arr->capacity * 1.5);
     arr->capacity *= 1.5;
@@ -134,6 +134,14 @@ void push_string_array(StringArray *arr, String *string) {
 
   arr->items[arr->size] = string;
   arr->size++;
+}
+
+void pop_string_array(StringArray *arr) {
+  if (arr->size == 0)
+    return;
+
+  free(arr->items[arr->size - 1]->content);
+  arr->size--;
 }
 
 void free_string_array(StringArray *arr) {
