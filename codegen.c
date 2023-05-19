@@ -2,12 +2,32 @@
 #include "ast.h"
 #include "memory.h"
 #include "utils/array.h"
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #define WRITE_TO_STRING(dest, source, format, ...)                             \
   sprintf(source, format, ##__VA_ARGS__);                                      \
   allocate_to_string(dest, source);
+
+#define GENERATE_LEFT_BINARYOP(node, format, ...)                              \
+  generate_asm(AS_BINARYOP_LEFT(node));                                        \
+  WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string, format,         \
+                  ##__VA_ARGS__);
+
+#define GENERATE_RIGHT_BINARYOP(node, format, ...)                             \
+  generate_asm(AS_BINARYOP_RIGHT(node));                                       \
+  WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string, format,         \
+                  ##__VA_ARGS__);
+
+#define GENERATE_BOTH_BINARYOP(node, format, ...)                              \
+  generate_asm(AS_BINARYOP_LEFT(node));                                        \
+  generate_asm(AS_BINARYOP_RIGHT(node));                                       \
+  WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string, format,         \
+                  ##__VA_ARGS__);
+
+#define DECLARATION true
+#define SPECEFIZER false
 
 typedef struct {
   FILE *file;
@@ -41,18 +61,16 @@ static FILE *open_file(const char *path) {
   return fp;
 }
 
-static char *data_byte_size(DataType type) {
+static char *data_byte_size(DataType type, bool is_declaring) {
   switch (type) {
   case TYPE_INTEGER:
   case TYPE_FLOAT:
-    return "dd";
+    return is_declaring ? "dd" : "DWORD";
 
   case TYPE_BOOLEAN:
-    return "db";
-
-    // probabaly extract it and make it more personalize in the future
+  case TYPE_VOID:
   case TYPE_STRING:
-    return "db";
+    return is_declaring ? "db" : "BYTE";
 
   default:
     printf("unknown at data_byte_size function at codegen.c\n");
@@ -68,17 +86,17 @@ static void generate_global_vars(AstNode *program) {
 
     fprintf(codegen_env.file, "%s %s %s\n",
             AS_LIST_ELEMENT(program, i)->data.variable.name,
-            data_byte_size(AS_LIST_ELEMENT(program, i)->data_type), "0");
+            data_byte_size(AS_LIST_ELEMENT(program, i)->data_type, DECLARATION),
+            "0");
   }
 }
 
 static void assign_global_vars(AstNode *variable) {
   codegen_env.string = init_string();
-
   WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
                   "\n; start of %s\n", variable->data.variable.name);
 
-  generate_asm(variable);
+  generate_asm(variable->data.variable.value);
 
   WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
                   "   pop r8\n"
@@ -121,17 +139,17 @@ static void setup_asm_file(AstNode *program) {
   fprintf(codegen_env.file, "\nend:\n"
                             "   mov rax, 60\n"
                             "   xor rdi, rdi\n"
-                            "   syscall\n");
+                            "   syscall\n"
 
-  fprintf(codegen_env.file, "\nprint_equal: \n"
+                            "\nprint_equal: \n"
                             "   mov rax, 1\n"
                             "   mov rdi, 1\n"
                             "   mov rsi, equal\n"
                             "   mov rdx, len_equal\n"
                             "   syscall\n"
-                            "   jmp end\n");
+                            "   jmp end\n"
 
-  fprintf(codegen_env.file, "\nprint_not_equal: \n"
+                            "\nprint_not_equal: \n"
                             "   mov rax, 1\n"
                             "   mov rdi, 1\n"
                             "   mov rsi, not_equal\n"
@@ -145,46 +163,34 @@ static void setup_asm_file(AstNode *program) {
     fprintf(codegen_env.file, "%s",
             codegen_env.string_block_array->items[i]->content);
   }
-  fprintf(codegen_env.file,
-          "\n   cmp DWORD [x], %d\n"
-          "   je print_equal\n"
-          "   jmp print_not_equal\n",
-          result);
+  fprintf(codegen_env.file, "\n   call main\n"
+                            "   call end\n");
 }
 
+static void generate_binary_operations() {}
+
 static void generate_condition(AstNode *node) {
-  switch (node->type) {
-  case AST_INTEGER:
-    fprintf(codegen_env.file, "    push %d\n", node->data.integer_val);
-    break;
+  codegen_env.string = init_string();
 
-  case AST_TRUE:
-    fprintf(codegen_env.file, "    push 1");
-    break;
+  generate_asm(node);
 
-  case AST_FALSE:
-    fprintf(codegen_env.file, "    push 0");
-    break;
+  fprintf(codegen_env.file,
+          "%s\n"
+          "   pop r8\n"
+          "   pop r9\n"
+          "   cmp r8, r9\n"
+          "   je print_equal\n"
+          "   jmp print_not_equal\n",
+          codegen_env.string->content);
 
-  case AST_IDENTIFIER_REFRENCE:
-    // check later if global or local
-    fprintf(codegen_env.file, "    push [%s]", node->data.identifier_refrence);
-    break;
-
-  case AST_FLOAT:
-    // later
-    break;
-
-    break;
-  default:
-    printf("error at generate_condition at codegen.c file.");
-    break;
-  }
+  free_string(codegen_env.string);
 }
 
 static void generate_asm(AstNode *node) {
   switch (node->type) {
   case AST_INTEGER:
+    WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string, "   push %d\n",
+                    node->data.integer_val);
     // Handle integer node
     break;
   case AST_FLOAT:
@@ -194,7 +200,20 @@ static void generate_asm(AstNode *node) {
     // Handle string node
     break;
   case AST_IDENTIFIER_REFRENCE:
-    // Handle identifier reference node
+    if (node->data.variable.is_global) {
+      WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
+                      "   mov eax, %s [%s]\n"
+                      "   push rax\n",
+                      data_byte_size(node->data_type, SPECEFIZER),
+                      node->data.variable.name);
+    } else {
+      WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
+                      "   mov eax, %s [rsp - %d]\n"
+                      "   push rax\n",
+                      data_byte_size(node->data_type, SPECEFIZER),
+                      node->data.variable.stack_pos);
+    }
+
     break;
   case AST_TRUE:
     // Handle true node
@@ -205,41 +224,31 @@ static void generate_asm(AstNode *node) {
   case AST_ADD:
     if (AS_BINARYOP_LEFT(node)->type != AST_INTEGER &&
         AS_BINARYOP_RIGHT(node)->type != AST_INTEGER) {
+      GENERATE_BOTH_BINARYOP(node, "   pop r9\n"
+                                   "   pop r10\n"
+                                   "   add r9, r10\n"
+                                   "   push r9\n\n");
 
-      generate_asm(AS_BINARYOP_LEFT(node));
-      generate_asm(AS_BINARYOP_RIGHT(node));
-
-      WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                      "   pop r9\n"
-                      "   pop r10\n"
-                      "   add r9, r10\n"
-                      "   push r9\n\n");
       break;
     }
 
-    if (AS_BINARYOP_LEFT(node)->type == AST_INTEGER &&
-        AS_BINARYOP_RIGHT(node)->type != AST_INTEGER) {
-
-      generate_asm(AS_BINARYOP_RIGHT(node));
-      WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                      "   pop r9\n"
-                      "   mov r8, r9\n"
-                      "   add r8, %d\n"
-                      "   push r8\n\n",
-                      AS_BINARYOP_LEFT(node)->data.integer_val);
+    if (AS_BINARYOP_RIGHT(node)->type != AST_INTEGER) {
+      GENERATE_RIGHT_BINARYOP(node,
+                              "   pop r9\n"
+                              "   mov r8, r9\n"
+                              "   add r8, %d\n"
+                              "   push r8\n\n",
+                              AS_BINARYOP_LEFT(node)->data.integer_val);
       break;
     }
 
-    if (AS_BINARYOP_LEFT(node)->type != AST_INTEGER &&
-        AS_BINARYOP_RIGHT(node)->type == AST_INTEGER) {
-
-      generate_asm(AS_BINARYOP_LEFT(node));
-      WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                      "   pop r9\n"
-                      "   mov r8, r9\n"
-                      "   add r8, %d\n"
-                      "   push r8\n\n",
-                      AS_BINARYOP_RIGHT(node)->data.integer_val);
+    if (AS_BINARYOP_LEFT(node)->type != AST_INTEGER) {
+      GENERATE_LEFT_BINARYOP(node,
+                             "   pop r9\n"
+                             "   mov r8, r9\n"
+                             "   add r8, %d\n"
+                             "   push r8\n\n",
+                             AS_BINARYOP_RIGHT(node)->data.integer_val);
       break;
     }
 
@@ -254,41 +263,31 @@ static void generate_asm(AstNode *node) {
   case AST_SUBTRACT:
     if (AS_BINARYOP_LEFT(node)->type != AST_INTEGER &&
         AS_BINARYOP_RIGHT(node)->type != AST_INTEGER) {
+      GENERATE_BOTH_BINARYOP(node, "   pop r9\n"
+                                   "   pop r10\n"
+                                   "   add r9, r10\n"
+                                   "   push r9\n\n");
 
-      generate_asm(AS_BINARYOP_LEFT(node));
-      generate_asm(AS_BINARYOP_RIGHT(node));
-
-      WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                      "   pop r10\n"
-                      "   pop r9\n"
-                      "   sub r9, r10\n"
-                      "   push r9\n\n");
       break;
     }
 
-    if (AS_BINARYOP_LEFT(node)->type == AST_INTEGER &&
-        AS_BINARYOP_RIGHT(node)->type != AST_INTEGER) {
-
-      generate_asm(AS_BINARYOP_RIGHT(node));
-      WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                      "   pop r9\n"
-                      "   mov r8, r9\n"
-                      "   sub r8, %d\n"
-                      "   push r8\n\n",
-                      AS_BINARYOP_LEFT(node)->data.integer_val);
+    if (AS_BINARYOP_RIGHT(node)->type != AST_INTEGER) {
+      GENERATE_RIGHT_BINARYOP(node,
+                              "   pop r9\n"
+                              "   mov r8, r9\n"
+                              "   sub r8, %d\n"
+                              "   push r8\n\n",
+                              AS_BINARYOP_LEFT(node)->data.integer_val);
       break;
     }
 
-    if (AS_BINARYOP_LEFT(node)->type != AST_INTEGER &&
-        AS_BINARYOP_RIGHT(node)->type == AST_INTEGER) {
-
-      generate_asm(AS_BINARYOP_LEFT(node));
-      WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                      "   pop r9\n"
-                      "   mov r8, r9\n"
-                      "   sub r8, %d\n"
-                      "   push r8\n\n",
-                      AS_BINARYOP_RIGHT(node)->data.integer_val);
+    if (AS_BINARYOP_LEFT(node)->type != AST_INTEGER) {
+      GENERATE_LEFT_BINARYOP(node,
+                             "   pop r9\n"
+                             "   mov r8, r9\n"
+                             "   sub r8, %d\n"
+                             "   push r8\n\n",
+                             AS_BINARYOP_RIGHT(node)->data.integer_val);
       break;
     }
 
@@ -303,39 +302,30 @@ static void generate_asm(AstNode *node) {
   case AST_MULTIPLY:
     if (AS_BINARYOP_LEFT(node)->type != AST_INTEGER &&
         AS_BINARYOP_RIGHT(node)->type != AST_INTEGER) {
+      GENERATE_BOTH_BINARYOP(node, "   pop r9\n"
+                                   "   pop r10\n"
+                                   "   imul r9, r10\n"
+                                   "   push r9\n\n");
 
-      generate_asm(AS_BINARYOP_LEFT(node));
-      generate_asm(AS_BINARYOP_RIGHT(node));
-
-      WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                      "   pop r9\n"
-                      "   pop r10\n"
-                      "   imul r9, r10\n"
-                      "   push r9\n\n");
       break;
     }
 
-    if (AS_BINARYOP_LEFT(node)->type == AST_INTEGER &&
-        AS_BINARYOP_RIGHT(node)->type != AST_INTEGER) {
+    if (AS_BINARYOP_RIGHT(node)->type != AST_INTEGER) {
+      GENERATE_RIGHT_BINARYOP(node,
+                              "   pop r9\n"
+                              "   imul r9, %d\n"
+                              "   push r9\n\n",
+                              AS_BINARYOP_LEFT(node)->data.integer_val);
 
-      generate_asm(AS_BINARYOP_RIGHT(node));
-      WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                      "   pop r9\n"
-                      "   imul r9, %d\n"
-                      "   push r9\n\n",
-                      AS_BINARYOP_LEFT(node)->data.integer_val);
       break;
     }
 
-    if (AS_BINARYOP_LEFT(node)->type != AST_INTEGER &&
-        AS_BINARYOP_RIGHT(node)->type == AST_INTEGER) {
-
-      generate_asm(AS_BINARYOP_LEFT(node));
-      WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                      "   pop r9\n"
-                      "   imul r9, %d\n"
-                      "   push r9\n\n",
-                      AS_BINARYOP_RIGHT(node)->data.integer_val);
+    if (AS_BINARYOP_LEFT(node)->type != AST_INTEGER) {
+      GENERATE_LEFT_BINARYOP(node,
+                             "   pop r9\n"
+                             "   imul r9, %d\n"
+                             "   push r9\n\n",
+                             AS_BINARYOP_RIGHT(node)->data.integer_val);
       break;
     }
 
@@ -351,40 +341,34 @@ static void generate_asm(AstNode *node) {
     if (AS_BINARYOP_LEFT(node)->type != AST_INTEGER &&
         AS_BINARYOP_RIGHT(node)->type != AST_INTEGER) {
 
-      generate_asm(AS_BINARYOP_LEFT(node));
-      generate_asm(AS_BINARYOP_RIGHT(node));
+      GENERATE_BOTH_BINARYOP(node, "   pop rax\n"
+                                   "   pop r9\n"
+                                   "   idiv r9\n"
+                                   "   push rax\n\n");
 
-      WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                      "   pop rax\n"
-                      "   pop r9\n"
-                      "   idiv r9\n"
-                      "   push rax\n\n");
       break;
     }
 
     if (AS_BINARYOP_LEFT(node)->type == AST_INTEGER &&
         AS_BINARYOP_RIGHT(node)->type != AST_INTEGER) {
+      GENERATE_RIGHT_BINARYOP(node,
+                              "   pop r9\n"
+                              "   mov rax, %d\n"
+                              "   idiv r9\n"
+                              "   push rax\n\n",
+                              AS_BINARYOP_LEFT(node)->data.integer_val);
 
-      generate_asm(AS_BINARYOP_RIGHT(node));
-      WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                      "   pop r9\n"
-                      "   mov rax, %d\n"
-                      "   idiv r9\n"
-                      "   push rax\n\n",
-                      AS_BINARYOP_LEFT(node)->data.integer_val);
       break;
     }
 
     if (AS_BINARYOP_LEFT(node)->type != AST_INTEGER &&
         AS_BINARYOP_RIGHT(node)->type == AST_INTEGER) {
-
-      generate_asm(AS_BINARYOP_LEFT(node));
-      WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                      "   pop rax\n"
-                      "   mov r9, %d\n"
-                      "   idiv r9\n"
-                      "   push rax\n\n",
-                      AS_BINARYOP_RIGHT(node)->data.integer_val);
+      GENERATE_LEFT_BINARYOP(node,
+                             "   pop rax\n"
+                             "   mov r9, %d\n"
+                             "   idiv r9\n"
+                             "   push rax\n\n",
+                             AS_BINARYOP_RIGHT(node)->data.integer_val);
       break;
     }
 
@@ -398,19 +382,11 @@ static void generate_asm(AstNode *node) {
 
     break;
 
-    // Handle divide node
-    break;
   case AST_EQUAL_EQUAL:
-    printf("%s\n", codegen_env.string_block_array->items[0]->content);
+
     generate_asm(node->data.binaryop.left);
     generate_asm(node->data.binaryop.right);
-    printf("%s\n", codegen_env.string_block_array->items[0]->content);
-    fprintf(codegen_env.file,
-            "\n%s \n"
-            "\n    pop r8\n"
-            "     pop r9\n"
-            "     cmp r8, r9",
-            codegen_env.string_block_array->items[0]->content);
+
     break;
 
   case AST_BANG:
@@ -438,20 +414,31 @@ static void generate_asm(AstNode *node) {
             "   push r9\n\n",
             node->data.unaryop.operand->data.integer_val);
     break;
+
   case AST_LET_DECLARATION:
+
+    codegen_env.string = init_string();
+
     // incase it is the first in the function so it
     // doesn't pop arbitary number
     fprintf(codegen_env.file, "   push 0\n");
 
     generate_asm(node->data.variable.value);
 
+    fprintf(codegen_env.file, "%s\n", codegen_env.string->content);
+    fprintf(codegen_env.file,
+            "   pop r8\n"
+            "   mov [rsp], r8\n",
+            node->data.variable.stack_pos);
+
+    free_string(codegen_env.string);
     break;
 
   case AST_VAR_ASSIGNMENT:
     break;
 
   case AST_IF_STATEMNET:
-    generate_asm(node->data.if_stmt.condition);
+    generate_condition(node->data.if_stmt.condition);
 
     break;
 
@@ -466,10 +453,18 @@ static void generate_asm(AstNode *node) {
     break;
 
   case AST_FUNCTION:
-    fprintf(codegen_env.file, "\n%s:\n", node->data.function_decl.name);
+    fprintf(codegen_env.file,
+            "\n%s:\n"
+            "   push rbp\n"
+            "   mov rbp, rsp\n"
+            "   sub rsp, %d\n\n",
+            node->data.function_decl.name,
+            node->data.function_decl.byte_allocated);
 
     generate_asm(node->data.function_decl.body);
 
+    fprintf(codegen_env.file, "   leave\n"
+                              "   ret\n");
     break;
 
   case AST_FUNCTION_CALL:
@@ -543,5 +538,6 @@ void codegen(AstNode *program, Table *string_table) {
   printf("%s\n", codegen_env.file->_IO_buf_base);
   fclose(codegen_env.file);
 
-  system("nasm -f elf64 ./code.asm && ld code.o -o code && ./code");
+  system("nasm -f elf64 ./code.asm && ld code.o -o code && "
+         "./code");
 }

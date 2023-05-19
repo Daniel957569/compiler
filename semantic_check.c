@@ -109,6 +109,23 @@ static bool check_data_type(AstNode *node) {
   return false;
 }
 
+static int type_to_bytes(DataType type) {
+  switch (type) {
+  case TYPE_FLOAT:
+    return 8;
+  case TYPE_INTEGER:
+    // 4 bytes
+    return 4;
+  case TYPE_BOOLEAN:
+    return 1;
+
+  case TYPE_VOID:
+  case TYPE_STRING:
+    // strings take no allocating because they are declared as global
+    return 0;
+  }
+}
+
 static void semantic_check(AstNode *node) {
   if (node == NULL) {
     printf("NULL node\n");
@@ -325,6 +342,7 @@ static void semantic_check(AstNode *node) {
     }
 
     node->data.variable.is_global = identifier->scope == 0 ? true : false;
+    node->data.variable.stack_pos = identifier->value->data.variable.stack_pos;
 
     free(identifier);
     break;
@@ -364,6 +382,15 @@ static void semantic_check(AstNode *node) {
   }
 
   case AST_LET_DECLARATION: {
+    if (env.current_scope > 0) {
+      // so if allocated bytes is 4 its location on the stack is just rsp
+      node->data.variable.stack_pos =
+          env.current_function->data.function_decl.byte_allocated;
+
+      env.current_function->data.function_decl.byte_allocated +=
+          type_to_bytes(node->data_type);
+    }
+
     for (int i = env.current_scope; i >= 0; i--) {
       if (table_contains(AS_TABLE(i), AS_VARIABLE_NAME(node),
                          AS_VARIABLE_HASH(node))) {
@@ -372,6 +399,7 @@ static void semantic_check(AstNode *node) {
         break;
       }
     }
+
     // add variable name to the current scope table
     table_set(AS_TABLE(env.current_scope), AS_VARIABLE_NAME(node),
               AS_VARIABLE_HASH(node),
@@ -497,7 +525,7 @@ static void semantic_check(AstNode *node) {
 
   case AST_FUNCTION: {
     // add function declaration inside a function if possible later on
-    if (env.current_scope != 0) {
+    if (env.current_scope > 0) {
       errorAt(node->line, node->data.function_decl.name,
               "Cannot define a function inside of a function");
     }
@@ -528,6 +556,7 @@ static void semantic_check(AstNode *node) {
 
     semantic_check(node->data.function_decl.body);
     env.current_function = NULL;
+    env.current_scope--;
 
     break;
   }
@@ -536,7 +565,7 @@ static void semantic_check(AstNode *node) {
     // if its a function the block has already made to fit in the
     // parameters in the AST_FUNCTION
 
-    if (env.current_function == NULL) {
+    if (env.current_function > 0) {
       env.current_scope++;
       init_environment();
     }

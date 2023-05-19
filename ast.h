@@ -91,6 +91,7 @@ typedef struct AstNode {
     struct {
       const char *name;
       u_int32_t string_hash;
+      int stack_pos;
       bool is_global;
       struct AstNode *value;
     } variable;
@@ -109,6 +110,7 @@ typedef struct AstNode {
     struct {
       const char *name;
       u_int32_t string_hash;
+      int byte_allocated;
       IdentifierArray *parameters;
       struct AstNode *body;
     } function_decl;
