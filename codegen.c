@@ -38,6 +38,7 @@ typedef struct {
 } CodegenEnviroment;
 
 CodegenEnviroment codegen_env;
+int label_sum = 0;
 int result;
 
 static void init_codegen_enviroment() {
@@ -178,9 +179,7 @@ static void generate_condition(AstNode *node) {
           "%s\n"
           "   pop r8\n"
           "   pop r9\n"
-          "   cmp r8, r9\n"
-          "   je print_equal\n"
-          "   jmp print_not_equal\n",
+          "   cmp r8, r9\n",
           codegen_env.string->content);
 
   free_string(codegen_env.string);
@@ -201,6 +200,7 @@ static void generate_asm(AstNode *node) {
     break;
   case AST_IDENTIFIER_REFRENCE:
     if (node->data.variable.is_global) {
+
       WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
                       "   mov eax, %s [%s]\n"
                       "   push rax\n",
@@ -383,9 +383,15 @@ static void generate_asm(AstNode *node) {
     break;
 
   case AST_EQUAL_EQUAL:
+    // first evaluate identifier so it doesn't fuck up with the pop
+    if (node->data.binaryop.right->type == AST_IDENTIFIER_REFRENCE) {
+      generate_asm(node->data.binaryop.right);
+      generate_asm(node->data.binaryop.left);
 
-    generate_asm(node->data.binaryop.left);
-    generate_asm(node->data.binaryop.right);
+    } else {
+      generate_asm(node->data.binaryop.left);
+      generate_asm(node->data.binaryop.right);
+    }
 
     break;
 
@@ -419,16 +425,12 @@ static void generate_asm(AstNode *node) {
 
     codegen_env.string = init_string();
 
-    // incase it is the first in the function so it
-    // doesn't pop arbitary number
-    fprintf(codegen_env.file, "   push 0\n");
-
     generate_asm(node->data.variable.value);
 
-    fprintf(codegen_env.file, "%s\n", codegen_env.string->content);
+    fprintf(codegen_env.file, "%s", codegen_env.string->content);
     fprintf(codegen_env.file,
             "   pop r8\n"
-            "   mov [rsp], r8\n",
+            "   mov [rsp - %d], r8\n\n",
             node->data.variable.stack_pos);
 
     free_string(codegen_env.string);
@@ -437,19 +439,51 @@ static void generate_asm(AstNode *node) {
   case AST_VAR_ASSIGNMENT:
     break;
 
-  case AST_IF_STATEMNET:
+  case AST_IF_STATEMNET: {
+    bool has_else = node->data.if_stmt.else_body != NULL;
+    int end_label = label_sum;
+    label_sum++;
+
     generate_condition(node->data.if_stmt.condition);
 
-    break;
+    // if not equal, jump to just to else if there is else, else jump to after
+    // the then body
+    fprintf(codegen_env.file, "   jne .L%d\n\n", end_label);
 
-  case AST_WHILE_STATEMENT:
+    generate_asm(node->data.if_stmt.then_body);
+
+    fprintf(codegen_env.file, "\n.L%d:\n", end_label);
+
+    if (has_else) {
+      generate_asm(node->data.if_stmt.else_body);
+    }
+
     break;
+  }
+
+  case AST_WHILE_STATEMENT: {
+    int start_label = label_sum;
+    int end_label = label_sum + 1;
+    label_sum++;
+
+    fprintf(codegen_env.file, ".L%d:\n", start_label);
+    generate_condition(node->data.while_stmt.condition);
+    fprintf(codegen_env.file, "   jne .L%d\n\n", end_label);
+
+    generate_asm(node->data.while_stmt.then_body);
+
+    fprintf(codegen_env.file,
+            "\n   jmp .L%d\n"
+            "\n.L%d:\n",
+            start_label, end_label);
+
+    break;
+  }
 
   case AST_RETURN_STATEMENT:
     break;
 
   case AST_CONTINUE_STATEMENT:
-
     break;
 
   case AST_FUNCTION:

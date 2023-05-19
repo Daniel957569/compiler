@@ -13,6 +13,10 @@
 #include <string.h>
 #include <time.h>
 
+int scanner_time;
+int parser_time;
+int codegen_time;
+
 static Token *run_scanner(const char *path) {
   clock_t start_time, end_time;
   double cpu_time_used;
