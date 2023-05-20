@@ -11,20 +11,29 @@
   allocate_to_string(dest, source);
 
 #define GENERATE_LEFT_BINARYOP(node, format, ...)                              \
-  generate_asm(AS_BINARYOP_LEFT(node));                                        \
-  WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string, format,         \
+  generate_asm(AS_BINARYOP_LEFT((node)));                                      \
+  WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string, (format),       \
                   ##__VA_ARGS__);
 
 #define GENERATE_RIGHT_BINARYOP(node, format, ...)                             \
-  generate_asm(AS_BINARYOP_RIGHT(node));                                       \
-  WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string, format,         \
+  generate_asm(AS_BINARYOP_RIGHT((node)));                                     \
+  WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string, (format),       \
                   ##__VA_ARGS__);
 
 #define GENERATE_BOTH_BINARYOP(node, format, ...)                              \
-  generate_asm(AS_BINARYOP_LEFT(node));                                        \
-  generate_asm(AS_BINARYOP_RIGHT(node));                                       \
-  WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string, format,         \
+  generate_asm(AS_BINARYOP_LEFT((node)));                                      \
+  generate_asm(AS_BINARYOP_RIGHT((node)));                                     \
+  WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string, (format),       \
                   ##__VA_ARGS__);
+
+#define GENERATE_COMPARISON_OP(node)                                           \
+  if ((node)->data.binaryop.right->type == AST_IDENTIFIER_REFRENCE) {          \
+    generate_asm((node)->data.binaryop.right);                                 \
+    generate_asm((node)->data.binaryop.left);                                  \
+  } else {                                                                     \
+    generate_asm((node)->data.binaryop.left);                                  \
+    generate_asm((node)->data.binaryop.right);                                 \
+  }
 
 #define DECLARATION true
 #define SPECEFIZER false
@@ -35,10 +44,10 @@ typedef struct {
   StringArray *string_block_array;
   String *string;
   char temp_string[1000];
+  int label_sum;
 } CodegenEnviroment;
 
 CodegenEnviroment codegen_env;
-int label_sum = 0;
 int result;
 
 static void init_codegen_enviroment() {
@@ -47,6 +56,7 @@ static void init_codegen_enviroment() {
   codegen_env.file = NULL;
   codegen_env.strings_table = NULL;
   codegen_env.string = NULL;
+  codegen_env.label_sum = 0;
 }
 
 static void generate_asm(AstNode *program);
@@ -70,8 +80,10 @@ static char *data_byte_size(DataType type, bool is_declaring) {
 
   case TYPE_BOOLEAN:
   case TYPE_VOID:
-  case TYPE_STRING:
     return is_declaring ? "db" : "BYTE";
+
+  case TYPE_STRING:
+    return is_declaring ? "dq" : "QWORD";
 
   default:
     printf("unknown at data_byte_size function at codegen.c\n");
@@ -79,7 +91,7 @@ static char *data_byte_size(DataType type, bool is_declaring) {
   }
 }
 
-static void generate_global_vars(AstNode *program) {
+static void declare_global_vars(AstNode *program) {
   fprintf(codegen_env.file, "; global variabless\n");
   for (int i = 0; i < AS_LIST_SIZE(program); i++) {
     if (AS_LIST_ELEMENT(program, i)->type != AST_LET_DECLARATION)
@@ -92,18 +104,46 @@ static void generate_global_vars(AstNode *program) {
   }
 }
 
-static void assign_global_vars(AstNode *variable) {
+static void generate_global_variables(AstNode *node) {
   codegen_env.string = init_string();
-  WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                  "\n; start of %s\n", variable->data.variable.name);
 
-  generate_asm(variable->data.variable.value);
+  switch (node->data.variable.value->type) {
+  case AST_STRING:
+    WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
+                    "\n; start of %s\n"
+                    "   mov rdi, %s\n"
+                    "   mov [%s], rdi\n"
+                    "; end of %s\n\n",
+                    node->data.variable.name,
+                    node->data.variable.value->data.str,
+                    node->data.variable.name, node->data.variable.name);
 
-  WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                  "   pop r8\n"
-                  "   mov [%s], r8\n"
-                  "\n; end of %s\n\n",
-                  variable->data.variable.name, variable->data.variable.name);
+    break;
+  case AST_INTEGER:
+    WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
+                    "\n; start of %s\n"
+                    "   mov DWORD [%s], %d\n"
+                    "; end of %s\n\n",
+                    node->data.variable.name, node->data.variable.name,
+                    node->data.variable.value->data.integer_val,
+                    node->data.variable.name);
+    break;
+
+  case AST_TRUE:
+  case AST_FALSE:
+    WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
+                    "\n; start of %s\n"
+                    "   mov BYTE [%s], %d\n"
+                    "; end of %s\n\n",
+                    node->data.variable.name, node->data.variable.name,
+                    node->data.variable.value->data.boolean,
+                    node->data.variable.name);
+    break;
+
+  default:
+    break;
+  }
+
   push_string_array(codegen_env.string_block_array, codegen_env.string);
 }
 
@@ -114,11 +154,8 @@ static void generate_strings() {
       char var_name[20];
       Entry entry = codegen_env.strings_table->entries[i];
 
-      sprintf(var_name, "string_%d",
-              entry.hash % codegen_env.strings_table->capacity);
-      fprintf(codegen_env.file, "%s db %s, 0\n", var_name, entry.key);
-
-      codegen_env.strings_table->entries++;
+      sprintf(var_name, "%s", codegen_env.strings_table->entries[i].key);
+      fprintf(codegen_env.file, "%s db \"%s\", 0\n", var_name, entry.key);
     }
   }
   fprintf(codegen_env.file, "\n");
@@ -132,7 +169,7 @@ static void setup_asm_file(AstNode *program) {
                             "  len_not_equal equ $ - not_equal\n");
 
   generate_strings();
-  generate_global_vars(program);
+  declare_global_vars(program);
 
   fprintf(codegen_env.file, "\nsection .text\n"
                             "\tglobal _start\n\n");
@@ -168,7 +205,31 @@ static void setup_asm_file(AstNode *program) {
                             "   call end\n");
 }
 
-static void generate_binary_operations() {}
+static char *comparison_op_to_jump_instruction(AstNodeType type) {
+  // everthing is the opposite because, just becuase.
+  switch (type) {
+  case AST_EQUAL_EQUAL:
+    return "jne";
+
+  case AST_NOT_EQUAL:
+    return "je";
+
+  case AST_LESS_EQUAL:
+    return "jg";
+
+  case AST_LESS:
+    return "jge";
+
+  case AST_GREATER_EQUAL:
+    return "jl";
+
+  case AST_GREATER:
+    return "jle";
+  default:
+    printf("Undefined behevoir in comparison_op_to_jump_instruction\n");
+    return "yo";
+  }
+}
 
 static void generate_condition(AstNode *node) {
   codegen_env.string = init_string();
@@ -179,11 +240,77 @@ static void generate_condition(AstNode *node) {
           "%s\n"
           "   pop r8\n"
           "   pop r9\n"
-          "   cmp r8, r9\n",
-          codegen_env.string->content);
+          "   cmp r8, r9\n"
+          "   %s .L%d\n",
+          codegen_env.string->content,
+          comparison_op_to_jump_instruction(node->type), codegen_env.label_sum);
 
   free_string(codegen_env.string);
 }
+
+static void generate_local_variable(AstNode *node) {
+  // both declaration and assignment share the smae functionallty
+  switch (node->data.variable.value->type) {
+  case AST_STRING:
+    printf("fdsfds\n");
+    fprintf(codegen_env.file,
+            "   mov rdi, %s\n"
+            "   mov [rsp - %d], rdi\n\n",
+            node->data.variable.value->data.str, node->data.variable.stack_pos);
+    return;
+
+  case AST_INTEGER:
+    fprintf(codegen_env.file, "   mov DWORD [rsp - %d], %d\n\n",
+            node->data.variable.stack_pos,
+            node->data.variable.value->data.integer_val);
+    return;
+
+  case AST_TRUE:
+  case AST_FALSE:
+    fprintf(codegen_env.file, "   mov BYTE [rsp - %d], %d\n\n",
+            node->data.variable.stack_pos,
+            node->data.variable.value->data.boolean);
+    return;
+
+    // binaryop
+  default:
+    codegen_env.string = init_string();
+
+    generate_asm(node->data.variable.value);
+
+    fprintf(codegen_env.file, "%s", codegen_env.string->content);
+    fprintf(codegen_env.file,
+            "   pop r8\n"
+            "   mov [rsp - %d], r8\n\n",
+            node->data.variable.stack_pos);
+
+    free_string(codegen_env.string);
+    return;
+  }
+}
+
+/* static void generate_local_variable_assignment(AstNode *node) { */
+/*   switch (node->data.variable.value->type) { */
+/*   case AST_STRING: */
+/*     fprintf(codegen_env.file, */
+/*             "   mov rdi, %s\n" */
+/*             "   mov [rsp - %d], rdi\n\n", */
+/*             node->data.variable.value->data.str,
+ * node->data.variable.stack_pos); */
+
+/*     return; */
+
+/*   case AST_INTEGER: */
+/*     fprintf(codegen_env.file, "   mov DWORD [rsp - %d], %d\n\n", */
+/*             node->data.variable.stack_pos, */
+/*             node->data.variable.value->data.integer_val); */
+/*     return; */
+
+/*   default: */
+
+/*     return; */
+/*   } */
+/* } */
 
 static void generate_asm(AstNode *node) {
   switch (node->type) {
@@ -383,36 +510,15 @@ static void generate_asm(AstNode *node) {
     break;
 
   case AST_EQUAL_EQUAL:
-    // first evaluate identifier so it doesn't fuck up with the pop
-    if (node->data.binaryop.right->type == AST_IDENTIFIER_REFRENCE) {
-      generate_asm(node->data.binaryop.right);
-      generate_asm(node->data.binaryop.left);
-
-    } else {
-      generate_asm(node->data.binaryop.left);
-      generate_asm(node->data.binaryop.right);
-    }
-
-    break;
-
   case AST_BANG:
-    // Handle bang node
-    break;
   case AST_NOT_EQUAL:
-    // Handle not equal node
-    break;
   case AST_GREATER:
-    // Handle greater node
-    break;
   case AST_GREATER_EQUAL:
-    // Handle greater equal node
-    break;
   case AST_LESS:
-    // Handle less node
-    break;
   case AST_LESS_EQUAL:
-    // Handle less equal node
+    GENERATE_COMPARISON_OP(node);
     break;
+
   case AST_NEGATE:
     fprintf(codegen_env.file,
             "   mov r9, %d\n"
@@ -422,33 +528,22 @@ static void generate_asm(AstNode *node) {
     break;
 
   case AST_LET_DECLARATION:
-
-    codegen_env.string = init_string();
-
-    generate_asm(node->data.variable.value);
-
-    fprintf(codegen_env.file, "%s", codegen_env.string->content);
-    fprintf(codegen_env.file,
-            "   pop r8\n"
-            "   mov [rsp - %d], r8\n\n",
-            node->data.variable.stack_pos);
-
-    free_string(codegen_env.string);
+    generate_local_variable(node);
     break;
 
   case AST_VAR_ASSIGNMENT:
+
+    generate_local_variable(node);
+
     break;
 
   case AST_IF_STATEMNET: {
     bool has_else = node->data.if_stmt.else_body != NULL;
-    int end_label = label_sum;
-    label_sum++;
+    int end_label = codegen_env.label_sum;
 
     generate_condition(node->data.if_stmt.condition);
 
-    // if not equal, jump to just to else if there is else, else jump to after
-    // the then body
-    fprintf(codegen_env.file, "   jne .L%d\n\n", end_label);
+    codegen_env.label_sum++;
 
     generate_asm(node->data.if_stmt.then_body);
 
@@ -462,13 +557,12 @@ static void generate_asm(AstNode *node) {
   }
 
   case AST_WHILE_STATEMENT: {
-    int start_label = label_sum;
-    int end_label = label_sum + 1;
-    label_sum++;
+    int start_label = codegen_env.label_sum;
+    int end_label = codegen_env.label_sum + 1;
+    codegen_env.label_sum++;
 
     fprintf(codegen_env.file, ".L%d:\n", start_label);
     generate_condition(node->data.while_stmt.condition);
-    fprintf(codegen_env.file, "   jne .L%d\n\n", end_label);
 
     generate_asm(node->data.while_stmt.then_body);
 
@@ -507,20 +601,19 @@ static void generate_asm(AstNode *node) {
   case AST_PROGRAM:
     for (int i = 0; i < node->data.block.elements->size; i++) {
       // global variables
-      if (node->data.block.elements->items[i]->type == AST_LET_DECLARATION) {
-        assign_global_vars(node->data.block.elements->items[i]);
+      if (node->data.block.elements->items[i]->type == AST_LET_DECLARATION ||
+          AST_VAR_ASSIGNMENT) {
+        generate_global_variables(node->data.block.elements->items[i]);
         continue;
       }
 
       generate_asm(node->data.block.elements->items[i]);
     }
-    // Handle program node
     break;
   case AST_BLOCK:
     for (int i = 0; i < node->data.block.elements->size; i++) {
       generate_asm(node->data.block.elements->items[i]);
     }
-    // Handle block node
     break;
   default:
     // Handle unknown node type

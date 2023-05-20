@@ -353,7 +353,7 @@ static AstNode *comparison() {
 static AstNode *equality() {
   AstNode *node = comparison();
 
-  while (match(TOKEN_BANG) || match(TOKEN_EQUAL_EQUAL)) {
+  while (match(TOKEN_BANG_EQUAL) || match(TOKEN_EQUAL_EQUAL)) {
     AstNodeType operator= toNodeType(previous()->type);
     AstNode *right = comparison();
     node = ast_create_binaryop(operator, node, right, current()->line);

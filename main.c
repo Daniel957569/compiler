@@ -13,9 +13,9 @@
 #include <string.h>
 #include <time.h>
 
-int scanner_time;
-int parser_time;
-int codegen_time;
+double scanner_time;
+double parser_time;
+double codegen_time;
 
 static Token *run_scanner(const char *path) {
   clock_t start_time, end_time;
@@ -27,11 +27,12 @@ static Token *run_scanner(const char *path) {
   Token *tokens = getTokens(source);
 
   end_time = clock();
-  cpu_time_used = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+  scanner_time = cpu_time_used =
+      ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
 
-  printf("\n---------------------------------------\n"
-         "Time taken by Scanner: %f Seconds\n"
-         "---------------------------------------\n\n",
+  printf("\n-------------------------------------------\n"
+         "| Time taken by Scanner: %f Seconds |\n"
+         "-------------------------------------------\n\n",
          cpu_time_used);
 
   return tokens;
@@ -49,11 +50,12 @@ static AstNode *run_parser(Token *tokens, Table *string_table) {
   free(tokens);
 
   end_time = clock();
-  cpu_time_used = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+  parser_time = cpu_time_used =
+      ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
 
-  printf("\n---------------------------------------\n"
-         "Time taken by Parser: %f Seconds\n"
-         "---------------------------------------\n\n",
+  printf("\n------------------------------------------\n"
+         "| Time taken by Parser: %f Seconds |\n"
+         "------------------------------------------\n\n",
          cpu_time_used);
 
   return program;
@@ -68,11 +70,12 @@ static void run_codegen(AstNode *program, Table *string_table) {
   codegen(program, string_table);
 
   end_time = clock();
-  cpu_time_used = ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
+  codegen_time = cpu_time_used =
+      ((double)(end_time - start_time)) / CLOCKS_PER_SEC;
 
-  printf("\n---------------------------------------\n"
-         "Time taken by Codegen: %f Seconds\n"
-         "---------------------------------------\n\n",
+  printf("\n-------------------------------------------\n"
+         "| Time taken by Codegen: %f Seconds |\n"
+         "-------------------------------------------\n",
          cpu_time_used);
 }
 
@@ -81,6 +84,11 @@ static void runFile(const char *path) {
   Token *tokens = run_scanner(path);
   AstNode *program = run_parser(tokens, &string_table);
   run_codegen(program, &string_table);
+
+  printf("\n-------------------------------------------\n"
+         "| Time taken to Compile: %f Seconds |\n"
+         "-------------------------------------------\n",
+         scanner_time + parser_time + codegen_time);
 }
 
 int main(int argc, const char *argv[]) {

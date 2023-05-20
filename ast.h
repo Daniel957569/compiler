@@ -79,7 +79,7 @@ typedef struct AstNode {
     float float_val;                 // AST_FLOAT
     int integer_val;                 // AST_NUMBER
     bool boolean;                    // AST_TRUE AST_FALSE
-    const char *str;                 // AST_STRING
+    char *str;                       // AST_STRING
     const char *identifier_refrence; // AST_IDENTIFIER
     struct { // AST_ADD, AST_SUBTRACT, AST_MULTIPLY, AST_DIVIDE ...
       struct AstNode *left;

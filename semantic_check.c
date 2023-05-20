@@ -112,6 +112,7 @@ static bool check_data_type(AstNode *node) {
 static int type_to_bytes(DataType type) {
   switch (type) {
   case TYPE_FLOAT:
+  case TYPE_STRING:
     return 8;
   case TYPE_INTEGER:
     // 4 bytes
@@ -120,10 +121,21 @@ static int type_to_bytes(DataType type) {
     return 1;
 
   case TYPE_VOID:
-  case TYPE_STRING:
-    // strings take no allocating because they are declared as global
     return 0;
   }
+}
+
+static void removeQuotes(char *str) {
+  int len = strlen(str);
+  int j = 0;
+
+  for (int i = 0; i < len; i++) {
+    if (str[i] != '"') {
+      str[j] = str[i];
+      j++;
+    }
+  }
+  str[j] = '\0';
 }
 
 static void semantic_check(AstNode *node) {
@@ -143,7 +155,9 @@ static void semantic_check(AstNode *node) {
 
   case AST_STRING: {
     // save strings for code generation to declare them.
-    const char *string = node->data.str;
+    removeQuotes(node->data.str);
+    char *string = node->data.str;
+    printf("%s\n", string);
     table_set(env.string_table, string, hash_string(string, strlen(string)),
               NULL);
 
