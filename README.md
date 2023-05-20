@@ -13,24 +13,24 @@ custom language.
 
 1. Clone the repository:
 
-``shell
+```shell
 git clone https://github.com/your-username/simple-compiler.git`
 
 2. Create a build directory:
 
-``shell
+```shell
 cd simple-compiler
 mkdir build
 cd build`
 
 3. Generate the build files using CMake:
 
-``shell
+```shell
 cmake ..
 
 4. Compile the project:
 
-``shell
+```shell
 make
 
 
@@ -42,7 +42,7 @@ To execute code written in the custom language, follow these steps:
 
 2. Run the executable with the text file as input:
 
-``shell
+```shell
 ./compiler ex.txt`
 
 
