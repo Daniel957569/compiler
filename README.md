@@ -1,4 +1,4 @@
-# Simple Compiler
+# Compiler
 
 This is a simple compiler project that allows you to execute code written in a
 custom language.
