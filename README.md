@@ -1,21 +1,7 @@
 - optimization
 - codegen
 
-fun x(): int {
-    let b: int = 30:
-    while b == 30 {
-        b = b + 1;
-    }
-
-    if b == 21 {
-        b = b * 10;
-    }
-
-    return b;
-}
-
-
-fun main(): int {
-    let output: int = x();
-}
-
+to run: clone the repo, create a build directory, cmake .., make to compile,
+./compiler ex.txt or any txt file that contains the code. which then execute
+the code and save the executable in the directory where cmake resides, build in
+this case.
