@@ -169,6 +169,7 @@ AstNode *ast_create_block(AstNodeType type, int line) {
 Identifier *create_identifier(char *name, DataType type) {
   Identifier *identifier = ALLOCATE(Identifier, 1);
   identifier->name = name;
+  identifier->stack_pos = 0;
   identifier->data_type = type;
   identifier->hash = hash_string(name, strlen(name));
   return identifier;

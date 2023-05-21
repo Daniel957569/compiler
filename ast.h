@@ -67,6 +67,7 @@ typedef enum {
 
 typedef struct Identifier {
   DataType data_type;
+  int stack_pos;
   char *name;
   uint32_t hash;
 } Identifier;

@@ -26,7 +26,7 @@ print_equal:
    syscall
    jmp end
 
-print_not_equal: 
+print_not_equal:
    mov rax, 1
    mov rdi, 1
    mov rsi, not_equal

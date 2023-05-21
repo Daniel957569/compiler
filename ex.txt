@@ -1,4 +1,5 @@
 let x: int =   50 + 10 * 11 / 1 * 10 + 10;
 
 fun main(): int {
+     let x: int = 10;
 }

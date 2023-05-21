@@ -356,7 +356,7 @@ static void semantic_check(AstNode *node) {
     }
 
     node->data.variable.is_global = identifier->scope == 0 ? true : false;
-    node->data.variable.stack_pos = identifier->value->data.variable.stack_pos;
+    // node->data.variable.stack_pos = identifier->value->data.variable.stack_pos;
 
     free(identifier);
     break;
@@ -566,6 +566,12 @@ static void semantic_check(AstNode *node) {
         errorAt(node->line, node->data.function_decl.name,
                 "Cannot redefine parameters.");
       }
+
+      AS_PARAMETER(node, i)->stack_pos =
+          node->data.function_decl.byte_allocated;
+
+      node->data.function_decl.byte_allocated +=
+          type_to_bytes(AS_PARAMETER(node, i)->data_type);
     }
 
     semantic_check(node->data.function_decl.body);
