@@ -251,8 +251,9 @@ static AstNode *primary() {
     return node;
   }
   if (match(TOKEN_IDENTIFIER)) {
-    return ast_create_identifier_refrence(parseName(previous()),
-                                          current()->line);
+    return ast_create_variable_stmt(AST_IDENTIFIER_REFRENCE, TYPE_STRING,
+                                    parseName(previous()), current()->line,
+                                    NULL);
   }
 
   consume(TOKEN_LEFT_PAREN, "Expected '(' before Expression.");
@@ -442,6 +443,12 @@ static AstNode *continue_statement() {
   return ast_create_continue_statement(current()->line);
 }
 
+static AstNode *print_statement() {
+  AstNode *node = expr();
+  consume(TOKEN_SEMICOLON, "Expected ; after print statement.");
+  return ast_create_print_statement(TYPE_VOID, node, current()->line);
+}
+
 static AstNode *statement() {
   if (match(TOKEN_IF)) {
     return if_statement();
@@ -451,6 +458,8 @@ static AstNode *statement() {
     return return_statement();
   } else if (match(TOKEN_CONTINUE)) {
     return continue_statement();
+  } else if (match(TOKEN_PRINT)) {
+    return print_statement();
   }
 
   return expr_statment();
@@ -504,6 +513,7 @@ static AstNode *declaration() {
   } else if (match(TOKEN_FUN)) {
     return function_delclaration();
   }
+
   return statement();
 }
 

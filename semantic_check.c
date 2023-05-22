@@ -61,7 +61,6 @@ static void init_environment() {
   // so need to free that data
   if (env.env_array->items[env.current_scope]->is_initialized &&
       env.current_scope != 0) {
-    printf("free scope %d\n", env.current_scope);
     free_table(&env.env_array->items[env.current_scope]->table);
   }
 
@@ -145,7 +144,6 @@ static void semantic_check(AstNode *node) {
     // save strings for code generation to declare them.
     removeQuotes(node->data.str);
     char *string = node->data.str;
-    printf("%s\n", string);
     table_set(env.string_table, string, hash_string(string, strlen(string)),
               NULL);
 
@@ -320,6 +318,12 @@ static void semantic_check(AstNode *node) {
     break;
   }
 
+  case AST_PRINT_STATEMENT:
+    semantic_check(node->data.print_stmt.value);
+    node->data_type = node->data.print_stmt.value->data_type;
+
+    break;
+
   case AST_IDENTIFIER_REFRENCE: {
     // check for the variable assigning and change its data type to its
     // correct one if exist
@@ -342,8 +346,9 @@ static void semantic_check(AstNode *node) {
       errorAt(node->line + 1, AS_VARIABLE_NAME(node),
               "Use of undeclared identifier.");
     }
-    if (identifier->value == NULL) {
-    } else {
+
+    if (node->data_type == TYPE_STRING) {
+      printf("%d\n", identifier->stack_pos);
     }
 
     node->data.variable.is_global = identifier->scope == 0 ? true : false;
@@ -354,7 +359,6 @@ static void semantic_check(AstNode *node) {
   }
 
   case AST_VAR_ASSIGNMENT: {
-    printf("stack %d\n", node->data.variable.stack_pos);
     // add more in depth error messages later.
     Symbol *identifier = INIT_EMPTY_SYMBOL();
 
@@ -484,7 +488,6 @@ static void semantic_check(AstNode *node) {
                              AS_FUNCTION_CALL(node).string_hash, identifier)) {
         // check to see if the identifier is a function or variable
         if (identifier->type != FUNCTION_TYPE) {
-          printf("%d\n", identifier->data_type);
           errorAt(node->line, node->data.function_call.name,
                   "Variable is not a function calle.");
           break;

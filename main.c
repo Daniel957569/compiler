@@ -32,7 +32,7 @@ static Token *run_scanner(const char *path) {
 
   printf("\n-------------------------------------------\n"
          "| Time taken by Scanner: %f Seconds |\n"
-         "-------------------------------------------\n\n",
+         "-------------------------------------------\n",
          cpu_time_used);
 
   return tokens;
@@ -55,7 +55,7 @@ static AstNode *run_parser(Token *tokens, Table *string_table) {
 
   printf("\n------------------------------------------\n"
          "| Time taken by Parser: %f Seconds |\n"
-         "------------------------------------------\n\n",
+         "------------------------------------------\n",
          cpu_time_used);
 
   return program;

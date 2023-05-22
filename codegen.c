@@ -98,7 +98,7 @@ static char *data_type_to_register(DataType type) {
   switch (type) {
   case TYPE_FLOAT:
   case TYPE_STRING:
-      return "rax";
+    return "rax";
 
   case TYPE_INTEGER:
     return "eax";
@@ -169,7 +169,7 @@ static void generate_global_variables(AstNode *node) {
 }
 
 static void generate_strings() {
-  fprintf(codegen_env.file, "; Strings\n");
+  fprintf(codegen_env.file, "\n; Strings\n");
   for (int i = 0; i < codegen_env.strings_table->capacity; i++) {
     if (codegen_env.strings_table->entries[i].key != NULL) {
       char var_name[20];
@@ -187,13 +187,18 @@ static void setup_asm_file(AstNode *program) {
   fprintf(codegen_env.file, "  equal db 'Equal', 0, 10\n"
                             "  len_equal equ $ - equal\n"
                             "  not_equal db 'Not Equal', 0, 10\n"
-                            "  len_not_equal equ $ - not_equal\n");
+                            "  len_not_equal equ $ - not_equal\n"
+                            "  format_number db \"%%d\", 10, 0\n"
+                            "  format_string db \"%%s\", 10, 0\n"
+                            "  format_true db \"true\", 10, 0\n"
+                            "  format_false db \"false\", 10, 0\n");
 
   generate_strings();
   declare_global_vars(program);
 
   fprintf(codegen_env.file, "\nsection .text\n"
-                            "\tglobal _start\n\n");
+                            "\textern printf\n"
+                            "\tglobal asm_start\n\n");
 
   fprintf(codegen_env.file, "\nend:\n"
                             "   mov rax, 60\n"
@@ -217,7 +222,7 @@ static void setup_asm_file(AstNode *program) {
                             "   ret\n");
 
   generate_asm(program);
-  fprintf(codegen_env.file, "\n_start:\n");
+  fprintf(codegen_env.file, "\nasm_start:\n");
   for (int i = 0; i < codegen_env.string_block_array->size; i++) {
     fprintf(codegen_env.file, "%s",
             codegen_env.string_block_array->items[i]->content);
@@ -331,28 +336,39 @@ static void initialize_function_parameters(AstNode *node) {
   }
 }
 
-/* static void generate_local_variable_assignment(AstNode *node) { */
-/*   switch (node->data.variable.value->type) { */
-/*   case AST_STRING: */
-/*     fprintf(codegen_env.file, */
-/*             "   mov rdi, %s\n" */
-/*             "   mov [rsp - %d], rdi\n\n", */
-/*             node->data.variable.value->data.str,
- * node->data.variable.stack_pos); */
+static void generate_print_statement(AstNode *node) {
+  switch (node->data_type) {
+  case TYPE_STRING:
+    fprintf(codegen_env.file, "   mov rsi, [rsp]\n"
+                              "   mov rdi, format_string\n"
+                              "   mov al, 0\n"
+                              "   call printf\n"
+                              "   pop rdi\n");
+    return;
 
-/*     return; */
+  case TYPE_INTEGER:
+    fprintf(codegen_env.file, "   mov rsi, [rsp]\n"
+                              "   mov rdi, format_number\n"
+                              "   call printf\n"
+                              "   pop rdi\n");
+    return;
 
-/*   case AST_INTEGER: */
-/*     fprintf(codegen_env.file, "   mov DWORD [rsp - %d], %d\n\n", */
-/*             node->data.variable.stack_pos, */
-/*             node->data.variable.value->data.integer_val); */
-/*     return; */
+  case TYPE_BOOLEAN:
+    fprintf(codegen_env.file,
+            "   xor rsi, rsi\n"
+            "   mov rdi, %s\n"
+            "   call printf\n"
+            "   pop rdi\n",
+            node->data.boolean ? "format_true" : "format_false");
 
-/*   default: */
+    break;
 
-/*     return; */
-/*   } */
-/* } */
+  case TYPE_FLOAT:
+    // todo
+  default:
+    return;
+  }
+}
 
 static void generate_asm(AstNode *node) {
   switch (node->type) {
@@ -365,6 +381,8 @@ static void generate_asm(AstNode *node) {
     // Handle float node
     break;
   case AST_STRING:
+    WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
+                    "   push string_%s\n", node->data.str);
     // Handle string node
     break;
   case AST_IDENTIFIER_REFRENCE:
@@ -383,7 +401,6 @@ static void generate_asm(AstNode *node) {
                       data_type_to_register(node->data_type),
                       data_byte_size(node->data_type, SPECEFIZER),
                       node->data.variable.stack_pos)
-      printf("lol %d\n", node->data.variable.stack_pos);
     }
 
     break;
@@ -573,12 +590,10 @@ static void generate_asm(AstNode *node) {
     break;
 
   case AST_LET_DECLARATION:
-    printf("let: %d\n", node->data.variable.stack_pos);
     generate_local_variable(node);
     break;
 
   case AST_VAR_ASSIGNMENT:
-    printf("var: %d\n", node->data.variable.stack_pos);
     generate_local_variable(node);
 
     break;
@@ -624,6 +639,17 @@ static void generate_asm(AstNode *node) {
     break;
 
   case AST_CONTINUE_STATEMENT:
+    break;
+
+  case AST_PRINT_STATEMENT:
+    codegen_env.string = init_string();
+
+    generate_asm(node->data.print_stmt.value);
+
+    fprintf(codegen_env.file, "%s", codegen_env.string->content);
+    free_string(codegen_env.string);
+
+    generate_print_statement(node->data.print_stmt.value);
     break;
 
   case AST_FUNCTION:
@@ -721,6 +747,6 @@ void codegen(AstNode *program, Table *string_table) {
   printf("%s\n", codegen_env.file->_IO_buf_base);
   fclose(codegen_env.file);
 
-  system("nasm -f elf64 ./code.asm && ld code.o -o code && "
+  system("nasm -f elf64 code.asm && gcc -no-pie -o code code.o asm_link.c && "
          "./code");
 }

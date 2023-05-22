@@ -120,6 +120,15 @@ AstNode *ast_create_return_statement(DataType type, AstNode *value, int line) {
   return node;
 }
 
+AstNode *ast_create_print_statement(DataType type, AstNode *value, int line) {
+  AstNode *node = ALLOCATE(AstNode, 1);
+  node->line = line;
+  node->data_type = type;
+  node->type = AST_PRINT_STATEMENT;
+  node->data.return_stmt.value = value;
+  return node;
+}
+
 AstNode *ast_create_continue_statement(int line) {
   AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
@@ -472,6 +481,12 @@ void print_ast(AstNode *node, int depth) {
     print("then", depth + 1);
     print_ast(node->data.if_stmt.then_body, depth + 2);
 
+    break;
+
+  case AST_PRINT_STATEMENT:
+    printf("Print: ");
+    printf("%s\n", type_to_string(node->data_type));
+    print_ast(node->data.return_stmt.value, depth + 1);
     break;
 
   case AST_RETURN_STATEMENT:

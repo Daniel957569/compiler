@@ -1,0 +1,13 @@
+let hi: string = "yooo";
+
+
+fun yooo(boo: string): int {
+    print true;
+    print 10;
+    print boo;
+}
+
+fun main(): int {
+    let x:int  = 20;
+    yooo("hello");
+}

@@ -49,6 +49,8 @@ typedef enum {
   AST_RETURN_STATEMENT,
   AST_CONTINUE_STATEMENT,
 
+  AST_PRINT_STATEMENT,
+
   AST_FUNCTION,
   AST_FUNCTION_CALL,
 
@@ -109,6 +111,9 @@ typedef struct AstNode {
       struct AstNode *value;
     } return_stmt;
     struct {
+      struct AstNode *value;
+    } print_stmt;
+    struct {
       const char *name;
       u_int32_t string_hash;
       int byte_allocated;
@@ -141,6 +146,7 @@ AstNode *ast_create_if_statement(AstNode *condition, AstNode *then_body,
 AstNode *ast_create_while_statement(AstNode *condition, AstNode *then_body,
                                     int line);
 AstNode *ast_create_return_statement(DataType type, AstNode *value, int line);
+AstNode *ast_create_print_statement(DataType type, AstNode *value, int line);
 AstNode *ast_create_continue_statement(int line);
 AstNode *ast_create_function_declaration(DataType type,
                                          const char *function_name,
