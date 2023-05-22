@@ -48,8 +48,8 @@ typedef struct {
   int label_sum;
 } CodegenEnviroment;
 
-const char *REGISTERS[10] = {"rcx", "rdx", "rsi", "rdi", "r10",
-                             "r11", "r12", "r13", "r14", "r15"};
+const char *REGISTERS[10] = {"r10", "r11", "r12", "r13", "r14",
+                             "r15", "rcx", "rdx", "rsi", "rdi"};
 CodegenEnviroment codegen_env;
 int result;
 
@@ -78,18 +78,36 @@ static FILE *open_file(const char *path) {
 static char *data_byte_size(DataType type, bool is_declaring) {
   switch (type) {
   case TYPE_INTEGER:
-  case TYPE_FLOAT:
     return is_declaring ? "dd" : "DWORD";
 
   case TYPE_BOOLEAN:
   case TYPE_VOID:
     return is_declaring ? "db" : "BYTE";
 
+  case TYPE_FLOAT:
   case TYPE_STRING:
     return is_declaring ? "dq" : "QWORD";
 
   default:
     printf("unknown at data_byte_size function at codegen.c\n");
+    return "-1";
+  }
+}
+
+static char *data_type_to_register(DataType type) {
+  switch (type) {
+  case TYPE_FLOAT:
+  case TYPE_STRING:
+      return "rax";
+
+  case TYPE_INTEGER:
+    return "eax";
+
+  case TYPE_BOOLEAN:
+    return "al";
+
+  default:
+    printf("unknown at data_type_to_register function at codegen.c\n");
     return "-1";
   }
 }
@@ -353,24 +371,27 @@ static void generate_asm(AstNode *node) {
     if (node->data.variable.is_global) {
 
       WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                      "   mov eax, %s [%s]\n"
+                      "   mov %s, %s [%s]\n"
                       "   push rax\n",
+                      data_type_to_register(node->data_type),
                       data_byte_size(node->data_type, SPECEFIZER),
                       node->data.variable.name);
     } else {
       WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                      "   mov eax, %s [rsp + %d]\n"
+                      "   mov %s, %s [rsp + %d]\n"
                       "   push rax\n",
+                      data_type_to_register(node->data_type),
                       data_byte_size(node->data_type, SPECEFIZER),
-                      node->data.variable.stack_pos);
+                      node->data.variable.stack_pos)
+      printf("lol %d\n", node->data.variable.stack_pos);
     }
 
     break;
   case AST_TRUE:
-    // Handle true node
-    break;
   case AST_FALSE:
-    // Handle false node
+    WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string, "   push %d\n",
+                    node->data.boolean);
+
     break;
   case AST_ADD:
     if (AS_BINARYOP_LEFT(node)->type != AST_INTEGER &&
@@ -552,11 +573,12 @@ static void generate_asm(AstNode *node) {
     break;
 
   case AST_LET_DECLARATION:
+    printf("let: %d\n", node->data.variable.stack_pos);
     generate_local_variable(node);
     break;
 
   case AST_VAR_ASSIGNMENT:
-
+    printf("var: %d\n", node->data.variable.stack_pos);
     generate_local_variable(node);
 
     break;

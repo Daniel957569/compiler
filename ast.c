@@ -53,7 +53,7 @@ AstNode *ast_create_boolean(AstNodeType type, bool boolean, int line) {
   return node;
 }
 
-AstNode *ast_create_string(const char *str, int line) {
+AstNode *ast_create_string(char *str, int line) {
   AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->data_type = TYPE_STRING;
@@ -81,7 +81,7 @@ AstNode *ast_create_variable_stmt(AstNodeType type, DataType data_type,
   node->data_type = data_type;
   node->type = type;
   node->data.variable.value = value;
-  node->data.variable.stack_pos = 0;
+  node->data.variable.stack_pos = 4;
   node->data.variable.string_hash = hash_string(name, strlen(name));
   node->data.variable.is_global = false;
   node->data.variable.name = name;
@@ -137,7 +137,7 @@ AstNode *ast_create_function_declaration(DataType type,
   node->type = AST_FUNCTION;
   node->data.function_decl.parameters = parameters;
   node->data.function_decl.name = function_name;
-  node->data.function_decl.byte_allocated = 0;
+  node->data.function_decl.byte_allocated = 8;
   node->data.function_decl.body = function_body;
   node->data.function_decl.string_hash =
       hash_string(function_name, strlen(function_name));
@@ -169,7 +169,7 @@ AstNode *ast_create_block(AstNodeType type, int line) {
 Identifier *create_identifier(char *name, DataType type) {
   Identifier *identifier = ALLOCATE(Identifier, 1);
   identifier->name = name;
-  identifier->stack_pos = 0;
+  identifier->stack_pos = 8;
   identifier->data_type = type;
   identifier->hash = hash_string(name, strlen(name));
   return identifier;

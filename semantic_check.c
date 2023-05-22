@@ -7,10 +7,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define EIGHT_BYTES 8
+
 // add clearer error messages, such as "return type 'integer' doesn't match
 // function return type 'String'"
 
 #define AS_TABLE(index) &env.env_array->items[(index)]->table
+#define INIT_EMPTY_SYMBOL() init_symbol(NULL, VARIABLE_TYPE, TYPE_VOID, 0);
 
 typedef struct {
   EnvironmentArray *env_array;
@@ -83,10 +86,11 @@ static bool has_main_function(AstNode *program) {
   return false;
 }
 
-static Symbol *init_symbol(AstNode *value, SymbolType type,
-                           DataType data_type) {
+static Symbol *init_symbol(AstNode *value, SymbolType type, DataType data_type,
+                           int stack_pos) {
   Symbol *symbol = malloc(sizeof(Symbol));
   symbol->scope = env.current_scope;
+  symbol->stack_pos = stack_pos;
   symbol->value = value;
   symbol->type = type;
   symbol->data_type = data_type;
@@ -107,22 +111,6 @@ static bool check_data_type(AstNode *node) {
   }
 
   return false;
-}
-
-static int type_to_bytes(DataType type) {
-  switch (type) {
-  case TYPE_FLOAT:
-  case TYPE_STRING:
-    return 8;
-  case TYPE_INTEGER:
-    // 4 bytes
-    return 4;
-  case TYPE_BOOLEAN:
-    return 1;
-
-  case TYPE_VOID:
-    return 0;
-  }
 }
 
 static void removeQuotes(char *str) {
@@ -336,7 +324,7 @@ static void semantic_check(AstNode *node) {
     // check for the variable assigning and change its data type to its
     // correct one if exist
 
-    Symbol *identifier = init_symbol(NULL, VARIABLE_TYPE, TYPE_VOID);
+    Symbol *identifier = INIT_EMPTY_SYMBOL();
     bool hasDefinition = false;
 
     for (int i = env.current_scope; i >= 0; i--) {
@@ -354,17 +342,21 @@ static void semantic_check(AstNode *node) {
       errorAt(node->line + 1, AS_VARIABLE_NAME(node),
               "Use of undeclared identifier.");
     }
+    if (identifier->value == NULL) {
+    } else {
+    }
 
     node->data.variable.is_global = identifier->scope == 0 ? true : false;
-    // node->data.variable.stack_pos = identifier->value->data.variable.stack_pos;
+    node->data.variable.stack_pos = identifier->stack_pos;
 
     free(identifier);
     break;
   }
 
   case AST_VAR_ASSIGNMENT: {
+    printf("stack %d\n", node->data.variable.stack_pos);
     // add more in depth error messages later.
-    Symbol *identifier = init_symbol(NULL, VARIABLE_TYPE, TYPE_VOID);
+    Symbol *identifier = INIT_EMPTY_SYMBOL();
 
     bool hasDefinition = false;
     for (int i = env.current_scope; i >= 0; i--) {
@@ -390,6 +382,7 @@ static void semantic_check(AstNode *node) {
               "Cannot assign a value that is not equal to type "
               "definition");
     }
+    node->data.variable.stack_pos = identifier->stack_pos;
 
     free(identifier);
     break;
@@ -401,8 +394,7 @@ static void semantic_check(AstNode *node) {
       node->data.variable.stack_pos =
           env.current_function->data.function_decl.byte_allocated;
 
-      env.current_function->data.function_decl.byte_allocated +=
-          type_to_bytes(node->data_type);
+      env.current_function->data.function_decl.byte_allocated += EIGHT_BYTES;
     }
 
     for (int i = env.current_scope; i >= 0; i--) {
@@ -417,7 +409,8 @@ static void semantic_check(AstNode *node) {
     // add variable name to the current scope table
     table_set(AS_TABLE(env.current_scope), AS_VARIABLE_NAME(node),
               AS_VARIABLE_HASH(node),
-              init_symbol(node, VARIABLE_TYPE, node->data_type));
+              init_symbol(node, VARIABLE_TYPE, node->data_type,
+                          node->data.variable.stack_pos));
 
     semantic_check(AS_VARIABLE_VALUE(node));
     // check if the variable type matches the values assgined
@@ -481,7 +474,7 @@ static void semantic_check(AstNode *node) {
 
     AstNode *function =
         ast_create_function_declaration(TYPE_VOID, "yo", NULL, NULL, 1);
-    Symbol *identifier = init_symbol(function, FUNCTION_TYPE, TYPE_VOID);
+    Symbol *identifier = init_symbol(function, FUNCTION_TYPE, TYPE_VOID, 0);
 
     // check if there is definition of the function
     bool has_definition = false;
@@ -544,9 +537,15 @@ static void semantic_check(AstNode *node) {
               "Cannot define a function inside of a function");
     }
 
+    if (node->data.function_decl.parameters->size > 10) {
+      // TODO: pass arguments through the stack? or stack + registers
+      errorAt(node->line, node->data.function_decl.name,
+              "A Function cannot have more than 10 parameters");
+    }
+
     if (!table_set(AS_TABLE(env.current_scope), AS_FUNCTION_DECL(node).name,
                    AS_FUNCTION_DECL(node).string_hash,
-                   init_symbol(node, FUNCTION_TYPE, node->data_type))) {
+                   init_symbol(node, FUNCTION_TYPE, node->data_type, 0))) {
 
       errorAt(node->line, node->data.function_decl.name,
               "Cannot redefine function.");
@@ -562,7 +561,8 @@ static void semantic_check(AstNode *node) {
       if (!table_set(AS_TABLE(env.current_scope), AS_PARAMETER(node, i)->name,
                      AS_PARAMETER(node, i)->hash,
                      init_symbol(NULL, PARAMETER_TYPE,
-                                 AS_PARAMETER(node, i)->data_type))) {
+                                 AS_PARAMETER(node, i)->data_type,
+                                 node->data.function_decl.byte_allocated))) {
         errorAt(node->line, node->data.function_decl.name,
                 "Cannot redefine parameters.");
       }
@@ -570,8 +570,7 @@ static void semantic_check(AstNode *node) {
       AS_PARAMETER(node, i)->stack_pos =
           node->data.function_decl.byte_allocated;
 
-      node->data.function_decl.byte_allocated +=
-          type_to_bytes(AS_PARAMETER(node, i)->data_type);
+      node->data.function_decl.byte_allocated += EIGHT_BYTES;
     }
 
     semantic_check(node->data.function_decl.body);

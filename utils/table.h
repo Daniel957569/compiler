@@ -19,6 +19,7 @@ typedef enum {
 typedef struct Symbol {
   AstNode *value;
   int scope;
+  int stack_pos;
   SymbolType type;
   DataType data_type;
 } Symbol;

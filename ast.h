@@ -132,7 +132,7 @@ AstNode *ast_create_binaryop(AstNodeType type, AstNode *left, AstNode *right,
                              int line);
 AstNode *ast_create_unaryop(AstNodeType type, AstNode *operand, int line);
 AstNode *ast_create_boolean(AstNodeType type, bool boolean, int line);
-AstNode *ast_create_string(const char *str, int line);
+AstNode *ast_create_string(char *str, int line);
 AstNode *ast_create_identifier_refrence(const char *str, int line);
 AstNode *ast_create_variable_stmt(AstNodeType type, DataType data_type,
                                   const char *name, int line, AstNode *value);
