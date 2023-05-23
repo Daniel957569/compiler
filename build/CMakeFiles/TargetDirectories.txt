@@ -1,3 +1,0 @@
-/home/daniel/projects/compiler/build/CMakeFiles/compiler.dir
-/home/daniel/projects/compiler/build/CMakeFiles/edit_cache.dir
-/home/daniel/projects/compiler/build/CMakeFiles/rebuild_cache.dir
