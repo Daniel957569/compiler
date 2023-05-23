@@ -1,7 +1,6 @@
 # Compiler
 
-This is a simple compiler project that allows you to execute code written in a
-custom language.
+My toy compiler.
 
 ## Prerequisites
 
@@ -14,13 +13,13 @@ custom language.
 1. Clone the repository:
 
 ```shell
-git clone https://github.com/your-username/simple-compiler.git
+git clone https://github.com/Daniel957569/compiler.git
 ```
 
 2. Create a build directory:
 
 ```shell
-cd simple-compiler
+cd compiler
 mkdir build
 cd build
 ```
