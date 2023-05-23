@@ -36,6 +36,8 @@
     generate_asm((node)->data.binaryop.right);                                 \
   }
 
+#define STACK_POSITION(pos) codegen_env.function_total_bytes_allocated - pos
+
 #define DECLARATION true
 #define SPECEFIZER false
 
@@ -44,6 +46,7 @@ typedef struct {
   Table *strings_table;
   StringArray *string_block_array;
   String *string;
+  int function_total_bytes_allocated;
   char temp_string[1000];
   int label_sum;
 } CodegenEnviroment;
@@ -60,6 +63,7 @@ static void init_codegen_enviroment() {
   codegen_env.strings_table = NULL;
   codegen_env.string = NULL;
   codegen_env.label_sum = 0;
+  codegen_env.function_total_bytes_allocated = 0;
 }
 
 static void generate_asm(AstNode *program);
@@ -77,14 +81,14 @@ static FILE *open_file(const char *path) {
 
 static char *data_byte_size(DataType type, bool is_declaring) {
   switch (type) {
-  case TYPE_INTEGER:
-    return is_declaring ? "dd" : "DWORD";
+    // return is_declaring ? "dd" : "DWORD";
 
   case TYPE_BOOLEAN:
   case TYPE_VOID:
     return is_declaring ? "db" : "BYTE";
 
   case TYPE_FLOAT:
+  case TYPE_INTEGER:
   case TYPE_STRING:
     return is_declaring ? "dq" : "QWORD";
 
@@ -98,10 +102,10 @@ static char *data_type_to_register(DataType type) {
   switch (type) {
   case TYPE_FLOAT:
   case TYPE_STRING:
+  case TYPE_INTEGER:
     return "rax";
 
-  case TYPE_INTEGER:
-    return "eax";
+    // return "eax";
 
   case TYPE_BOOLEAN:
     return "al";
@@ -143,7 +147,7 @@ static void generate_global_variables(AstNode *node) {
   case AST_INTEGER:
     WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
                     "\n; start of %s\n"
-                    "   mov DWORD [%s], %d\n"
+                    "   mov QWORD [%s], %d\n"
                     "; end of %s\n\n",
                     node->data.variable.name, node->data.variable.name,
                     node->data.variable.value->data.integer_val,
@@ -188,7 +192,7 @@ static void setup_asm_file(AstNode *program) {
                             "  len_equal equ $ - equal\n"
                             "  not_equal db 'Not Equal', 0, 10\n"
                             "  len_not_equal equ $ - not_equal\n"
-                            "  format_number db \"%%d\", 10, 0\n"
+                            "  format_number db \"%%lld\", 10, 0\n"
                             "  format_string db \"%%s\", 10, 0\n"
                             "  format_true db \"true\", 10, 0\n"
                             "  format_false db \"false\", 10, 0\n");
@@ -267,8 +271,7 @@ static void generate_condition(AstNode *node) {
           "   pop r8\n"
           "   pop r9\n"
           "   cmp r9, r8\n"
-          "   %s .L%d\n"
-          "   call print_equal\n",
+          "   %s .L%d\n",
           codegen_env.string->content,
           comparison_op_to_jump_instruction(node->type), codegen_env.label_sum);
 
@@ -279,25 +282,40 @@ static void generate_local_variable(AstNode *node) {
   // both declaration and assignment share the smae functionallty
   switch (node->data.variable.value->type) {
   case AST_STRING:
-    printf("fdsfds\n");
     fprintf(codegen_env.file,
             "   mov rdi, string_%s\n"
-            "   mov [rsp + %d], rdi\n\n",
-            node->data.variable.value->data.str, node->data.variable.stack_pos);
+            "   mov [rbp - %d], rdi\n\n",
+            node->data.variable.value->data.str,
+            STACK_POSITION(node->data.variable.stack_pos));
     return;
 
   case AST_INTEGER:
-    fprintf(codegen_env.file, "   mov DWORD [rsp + %d], %d\n\n",
-            node->data.variable.stack_pos,
+    fprintf(codegen_env.file, "   mov QWORD [rbp - %d], %d\n\n",
+            STACK_POSITION(node->data.variable.stack_pos),
             node->data.variable.value->data.integer_val);
+
     return;
 
   case AST_TRUE:
   case AST_FALSE:
-    fprintf(codegen_env.file, "   mov BYTE [rsp + %d], %d\n\n",
-            node->data.variable.stack_pos,
+    fprintf(codegen_env.file, "   mov BYTE [rbp - %d], %d\n\n",
+            STACK_POSITION(node->data.variable.stack_pos),
             node->data.variable.value->data.boolean);
     return;
+
+  case AST_FUNCTION_CALL:
+    codegen_env.string = init_string();
+
+    generate_asm(node->data.variable.value);
+
+    fprintf(codegen_env.file,
+            "\n%s"
+            "   pop rdx\n"
+            "   mov [rbp - %d], rdx\n",
+            codegen_env.string->content,
+            STACK_POSITION(node->data.variable.stack_pos));
+    free_string(codegen_env.string);
+    break;
 
   default:
     codegen_env.string = init_string();
@@ -307,8 +325,8 @@ static void generate_local_variable(AstNode *node) {
     fprintf(codegen_env.file, "%s", codegen_env.string->content);
     fprintf(codegen_env.file,
             "   pop r8\n"
-            "   mov [rsp + %d], r8\n\n",
-            node->data.variable.stack_pos);
+            "   mov [rbp - %d], r8\n\n",
+            STACK_POSITION(node->data.variable.stack_pos));
 
     free_string(codegen_env.string);
     return;
@@ -321,7 +339,7 @@ static void initialize_function_argumnets(AstNode *node) {
 
     generate_asm(node->data.function_call.arguments->items[i]);
     fprintf(codegen_env.file,
-            "%s"
+            "\n%s"
             "   pop %s\n",
             codegen_env.string->content, REGISTERS[i]);
 
@@ -331,34 +349,33 @@ static void initialize_function_argumnets(AstNode *node) {
 
 static void initialize_function_parameters(AstNode *node) {
   for (int i = 0; i < node->data.function_decl.parameters->size; i++) {
-    fprintf(codegen_env.file, "   mov [rsp + %d], %s\n",
-            AS_PARAMETER(node, i)->stack_pos, REGISTERS[i]);
+    fprintf(codegen_env.file, "   mov [rbp - %d], %s\n",
+            STACK_POSITION(AS_PARAMETER(node, i)->stack_pos), REGISTERS[i]);
   }
 }
 
 static void generate_print_statement(AstNode *node) {
   switch (node->data_type) {
   case TYPE_STRING:
-    fprintf(codegen_env.file, "   mov rsi, [rsp]\n"
+    fprintf(codegen_env.file, "\n   pop rax\n"
+                              "   mov rsi, rax\n"
                               "   mov rdi, format_string\n"
                               "   mov al, 0\n"
-                              "   call printf\n"
-                              "   pop rdi\n");
+                              "   call printf\n");
     return;
 
   case TYPE_INTEGER:
-    fprintf(codegen_env.file, "   mov rsi, [rsp]\n"
+    fprintf(codegen_env.file, "\n   pop rax\n"
+                              "   mov rsi, rax\n"
                               "   mov rdi, format_number\n"
-                              "   call printf\n"
-                              "   pop rdi\n");
+                              "   call printf\n");
     return;
 
   case TYPE_BOOLEAN:
     fprintf(codegen_env.file,
             "   xor rsi, rsi\n"
             "   mov rdi, %s\n"
-            "   call printf\n"
-            "   pop rdi\n",
+            "   call printf\n",
             node->data.boolean ? "format_true" : "format_false");
 
     break;
@@ -396,11 +413,11 @@ static void generate_asm(AstNode *node) {
                       node->data.variable.name);
     } else {
       WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                      "   mov %s, %s [rsp + %d]\n"
+                      "   mov %s, %s [rbp - %d]\n"
                       "   push rax\n",
                       data_type_to_register(node->data_type),
                       data_byte_size(node->data_type, SPECEFIZER),
-                      node->data.variable.stack_pos)
+                      STACK_POSITION(node->data.variable.stack_pos))
     }
 
     break;
@@ -636,6 +653,15 @@ static void generate_asm(AstNode *node) {
   }
 
   case AST_RETURN_STATEMENT:
+    codegen_env.string = init_string();
+
+    generate_asm(node->data.return_stmt.value);
+
+    fprintf(codegen_env.file,
+            "\n%s"
+            "   pop rdx\n",
+            codegen_env.string->content);
+    free_string(codegen_env.string);
     break;
 
   case AST_CONTINUE_STATEMENT:
@@ -653,12 +679,16 @@ static void generate_asm(AstNode *node) {
     break;
 
   case AST_FUNCTION:
+    codegen_env.function_total_bytes_allocated =
+        node->data.function_decl.byte_allocated;
+
     fprintf(codegen_env.file,
             "\nfunction_%s:\n"
             "   push rbp\n"
             "   mov rbp, rsp\n"
             "   sub rsp, %d\n\n",
             node->data.function_decl.name,
+
             node->data.function_decl.byte_allocated);
 
     if (node->data.function_decl.parameters->size > 0) {
@@ -667,7 +697,7 @@ static void generate_asm(AstNode *node) {
 
     generate_asm(node->data.function_decl.body);
 
-    fprintf(codegen_env.file, "   leave\n"
+    fprintf(codegen_env.file, "\n   leave\n"
                               "   ret\n");
     break;
 
@@ -675,9 +705,13 @@ static void generate_asm(AstNode *node) {
     if (node->data.function_decl.parameters->size > 0) {
       initialize_function_argumnets(node);
     }
+    codegen_env.string = init_string();
 
-    fprintf(codegen_env.file, "   call function_%s\n",
-            node->data.function_call.name);
+    WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
+                    "   call function_%s\n"
+                    "   push rdx\n",
+                    node->data.function_call.name);
+
     break;
 
   case AST_PROGRAM:
@@ -730,6 +764,8 @@ static int evaluate(AstNode *node) {
   case AST_INTEGER:
     return node->data.integer_val;
     break;
+  default:
+    return val;
   }
   return val;
 }

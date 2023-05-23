@@ -2,12 +2,18 @@ let hi: string = "yooo";
 
 
 fun yooo(boo: string): int {
-    print true;
-    print 10;
-    print boo;
+    let i: int = 0;
+    while i < 10 {
+        print i;
+        i = i + 1;
+    }
+    return 10;
 }
 
 fun main(): int {
-    let x:int  = 20;
-    yooo("hello");
+    let x: int = yooo("hello");
+    print x;
+
+
+    return 0;
 }

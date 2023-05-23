@@ -24,6 +24,7 @@ typedef struct {
 
 } SemanticEnviroment;
 
+bool has_retrun = false;
 SemanticEnviroment env;
 
 static void errorAt(int line, const char *token, const char *message) {
@@ -158,7 +159,6 @@ static void semantic_check(AstNode *node) {
       errorAt(node->line, "+", "can only add two integers/floats.");
     }
 
-    printf("%d\n", node->data_type);
     break;
   }
 
@@ -314,6 +314,7 @@ static void semantic_check(AstNode *node) {
       errorAt(node->line, "return",
               "return type does not match function return type");
     }
+    has_retrun = true;
 
     break;
   }
@@ -345,10 +346,6 @@ static void semantic_check(AstNode *node) {
     if (!hasDefinition) {
       errorAt(node->line + 1, AS_VARIABLE_NAME(node),
               "Use of undeclared identifier.");
-    }
-
-    if (node->data_type == TYPE_STRING) {
-      printf("%d\n", identifier->stack_pos);
     }
 
     node->data.variable.is_global = identifier->scope == 0 ? true : false;
@@ -579,6 +576,13 @@ static void semantic_check(AstNode *node) {
     semantic_check(node->data.function_decl.body);
     env.current_function = NULL;
     env.current_scope--;
+
+    if (!has_retrun && node->data_type != TYPE_VOID) {
+      errorAt(
+          node->line, node->data.function_decl.name,
+          "Function has a return value but does not have a return statement.");
+    }
+    has_retrun = false;
 
     break;
   }
