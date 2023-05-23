@@ -1,18 +1,22 @@
-let hi: string = "yooo";
+let hi: int = 10 + 10 * 10 * 10 + 10;
 
+fun test1(b: string) {
+    print b;
+    print b;
+    print b;
+    print b;
+}
 
-fun yooo(boo: string): int {
-    let i: int = 0;
-    while i < 10 {
-        print i;
-        i = i + 1;
-    }
-    return 10;
+fun test(b: string) {
+    print 10;
+    print b;
+    test1("yo");
 }
 
 fun main(): int {
-    let x: int = yooo("hello");
-    print x;
+    let x: int = 10;
+    print "gkdsngkldsg";
+    test("yoyoyo");
 
 
     return 0;

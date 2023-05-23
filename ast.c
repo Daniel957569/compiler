@@ -146,7 +146,7 @@ AstNode *ast_create_function_declaration(DataType type,
   node->type = AST_FUNCTION;
   node->data.function_decl.parameters = parameters;
   node->data.function_decl.name = function_name;
-  node->data.function_decl.byte_allocated = 0;
+  node->data.function_decl.byte_allocated = 8;
   node->data.function_decl.body = function_body;
   node->data.function_decl.string_hash =
       hash_string(function_name, strlen(function_name));

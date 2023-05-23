@@ -12,28 +12,28 @@
   allocate_to_string(dest, source);
 
 #define GENERATE_LEFT_BINARYOP(node, format, ...)                              \
-  generate_asm(AS_BINARYOP_LEFT((node)));                                      \
+  generate_arithmetic(AS_BINARYOP_LEFT((node)));                               \
   WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string, (format),       \
                   ##__VA_ARGS__);
 
 #define GENERATE_RIGHT_BINARYOP(node, format, ...)                             \
-  generate_asm(AS_BINARYOP_RIGHT((node)));                                     \
+  generate_arithmetic(AS_BINARYOP_RIGHT((node)));                              \
   WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string, (format),       \
                   ##__VA_ARGS__);
 
 #define GENERATE_BOTH_BINARYOP(node, format, ...)                              \
-  generate_asm(AS_BINARYOP_LEFT((node)));                                      \
-  generate_asm(AS_BINARYOP_RIGHT((node)));                                     \
+  generate_arithmetic(AS_BINARYOP_LEFT((node)));                               \
+  generate_arithmetic(AS_BINARYOP_RIGHT((node)));                              \
   WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string, (format),       \
                   ##__VA_ARGS__);
 
 #define GENERATE_COMPARISON_OP(node)                                           \
   if ((node)->data.binaryop.right->type == AST_IDENTIFIER_REFRENCE) {          \
-    generate_asm((node)->data.binaryop.right);                                 \
-    generate_asm((node)->data.binaryop.left);                                  \
+    generate_arithmetic((node)->data.binaryop.right);                          \
+    generate_arithmetic((node)->data.binaryop.left);                           \
   } else {                                                                     \
-    generate_asm((node)->data.binaryop.left);                                  \
-    generate_asm((node)->data.binaryop.right);                                 \
+    generate_arithmetic((node)->data.binaryop.left);                           \
+    generate_arithmetic((node)->data.binaryop.right);                          \
   }
 
 #define STACK_POSITION(pos) codegen_env.function_total_bytes_allocated - pos
@@ -55,6 +55,8 @@ const char *REGISTERS[10] = {"r10", "r11", "r12", "r13", "r14",
                              "r15", "rcx", "rdx", "rsi", "rdi"};
 CodegenEnviroment codegen_env;
 int result;
+
+static void generate_arithmetic(AstNode *node);
 
 static void init_codegen_enviroment() {
   CodegenEnviroment env;
@@ -166,6 +168,12 @@ static void generate_global_variables(AstNode *node) {
     break;
 
   default:
+    generate_arithmetic(node->data.variable.value);
+    WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
+                    "   pop r8\n"
+                    "   mov QWORD [%s], r8\n",
+                    node->data.variable.name);
+
     break;
   }
 
@@ -226,7 +234,9 @@ static void setup_asm_file(AstNode *program) {
                             "   ret\n");
 
   generate_asm(program);
-  fprintf(codegen_env.file, "\nasm_start:\n");
+  fprintf(codegen_env.file, "\nasm_start:\n"
+                            "   push rbp\n"
+                            "   mov rbp, rsp\n");
   for (int i = 0; i < codegen_env.string_block_array->size; i++) {
     fprintf(codegen_env.file, "%s",
             codegen_env.string_block_array->items[i]->content);
@@ -306,11 +316,10 @@ static void generate_local_variable(AstNode *node) {
   case AST_FUNCTION_CALL:
     codegen_env.string = init_string();
 
-    generate_asm(node->data.variable.value);
+    generate_arithmetic(node->data.variable.value);
 
     fprintf(codegen_env.file,
             "\n%s"
-            "   pop rdx\n"
             "   mov [rbp - %d], rdx\n",
             codegen_env.string->content,
             STACK_POSITION(node->data.variable.stack_pos));
@@ -320,7 +329,7 @@ static void generate_local_variable(AstNode *node) {
   default:
     codegen_env.string = init_string();
 
-    generate_asm(node->data.variable.value);
+    generate_arithmetic(node->data.variable.value);
 
     fprintf(codegen_env.file, "%s", codegen_env.string->content);
     fprintf(codegen_env.file,
@@ -337,7 +346,7 @@ static void initialize_function_argumnets(AstNode *node) {
   for (int i = 0; i < node->data.function_call.arguments->size; i++) {
     codegen_env.string = init_string();
 
-    generate_asm(node->data.function_call.arguments->items[i]);
+    generate_arithmetic(node->data.function_call.arguments->items[i]);
     fprintf(codegen_env.file,
             "\n%s"
             "   pop %s\n",
@@ -360,7 +369,7 @@ static void generate_print_statement(AstNode *node) {
     fprintf(codegen_env.file, "\n   pop rax\n"
                               "   mov rsi, rax\n"
                               "   mov rdi, format_string\n"
-                              "   mov al, 0\n"
+                              "   xor rax, rax\n"
                               "   call printf\n");
     return;
 
@@ -368,6 +377,7 @@ static void generate_print_statement(AstNode *node) {
     fprintf(codegen_env.file, "\n   pop rax\n"
                               "   mov rsi, rax\n"
                               "   mov rdi, format_number\n"
+                              "   xor rax, rax\n"
                               "   call printf\n");
     return;
 
@@ -375,6 +385,7 @@ static void generate_print_statement(AstNode *node) {
     fprintf(codegen_env.file,
             "   xor rsi, rsi\n"
             "   mov rdi, %s\n"
+            "   xor rax, rax\n"
             "   call printf\n",
             node->data.boolean ? "format_true" : "format_false");
 
@@ -387,7 +398,7 @@ static void generate_print_statement(AstNode *node) {
   }
 }
 
-static void generate_asm(AstNode *node) {
+static void generate_arithmetic(AstNode *node) {
   switch (node->type) {
   case AST_INTEGER:
     WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string, "   push %d\n",
@@ -543,7 +554,7 @@ static void generate_asm(AstNode *node) {
                     AS_BINARYOP_RIGHT(node)->data.integer_val);
 
     break;
-  case AST_DIVIDE:
+  case AST_DIVIDE: {
     if (AS_BINARYOP_LEFT(node)->type != AST_INTEGER &&
         AS_BINARYOP_RIGHT(node)->type != AST_INTEGER) {
 
@@ -587,6 +598,7 @@ static void generate_asm(AstNode *node) {
                     AS_BINARYOP_RIGHT(node)->data.integer_val);
 
     break;
+  }
 
   case AST_EQUAL_EQUAL:
   case AST_BANG:
@@ -599,13 +611,17 @@ static void generate_asm(AstNode *node) {
     break;
 
   case AST_NEGATE:
-    fprintf(codegen_env.file,
-            "   mov r9, %d\n"
-            "   neg r9\n"
-            "   push r9\n\n",
-            node->data.unaryop.operand->data.integer_val);
+    WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
+                    "   mov r9, %d\n"
+                    "   neg r9\n"
+                    "   push r9\n\n",
+                    node->data.unaryop.operand->data.integer_val);
     break;
+  }
+}
 
+static void generate_asm(AstNode *node) {
+  switch (node->type) {
   case AST_LET_DECLARATION:
     generate_local_variable(node);
     break;
@@ -655,7 +671,7 @@ static void generate_asm(AstNode *node) {
   case AST_RETURN_STATEMENT:
     codegen_env.string = init_string();
 
-    generate_asm(node->data.return_stmt.value);
+    generate_arithmetic(node->data.return_stmt.value);
 
     fprintf(codegen_env.file,
             "\n%s"
@@ -670,7 +686,7 @@ static void generate_asm(AstNode *node) {
   case AST_PRINT_STATEMENT:
     codegen_env.string = init_string();
 
-    generate_asm(node->data.print_stmt.value);
+    generate_arithmetic(node->data.print_stmt.value);
 
     fprintf(codegen_env.file, "%s", codegen_env.string->content);
     free_string(codegen_env.string);
@@ -705,12 +721,12 @@ static void generate_asm(AstNode *node) {
     if (node->data.function_decl.parameters->size > 0) {
       initialize_function_argumnets(node);
     }
-    codegen_env.string = init_string();
 
-    WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                    "   call function_%s\n"
-                    "   push rdx\n",
-                    node->data.function_call.name);
+    fprintf(codegen_env.file,
+            "   call function_%s\n"
+            "   %s",
+            node->data.function_call.name,
+            node->data_type != TYPE_VOID ? "push rdx\n" : "");
 
     break;
 
@@ -732,6 +748,7 @@ static void generate_asm(AstNode *node) {
     }
     break;
   default:
+    // Handle unknown node type
     break;
   }
 }
@@ -763,8 +780,6 @@ static int evaluate(AstNode *node) {
   case AST_INTEGER:
     return node->data.integer_val;
     break;
-  default:
-    return val;
   }
   return val;
 }
