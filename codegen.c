@@ -732,7 +732,6 @@ static void generate_asm(AstNode *node) {
     }
     break;
   default:
-    // Handle unknown node type
     break;
   }
 }
