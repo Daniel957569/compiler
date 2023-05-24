@@ -9,9 +9,6 @@ section .data
   format_false db "false", 10, 0
 
 ; Strings
-string_yo db "yo", 0
-string_yoyoyo db "yoyoyo", 0
-string_gkdsngkldsg db "gkdsngkldsg", 0
 
 ; global variabless
 hi dq 0
@@ -42,77 +39,6 @@ print_not_equal:
    syscall
    ret
 
-function_test1:
-   push rbp
-   mov rbp, rsp
-   sub rsp, 16
-
-   mov [rbp - 8], r10
-   mov rax, QWORD [rbp - 8]
-   push rax
-
-   pop rax
-   mov rsi, rax
-   mov rdi, format_string
-   xor rax, rax
-   call printf
-   mov rax, QWORD [rbp - 8]
-   push rax
-
-   pop rax
-   mov rsi, rax
-   mov rdi, format_string
-   xor rax, rax
-   call printf
-   mov rax, QWORD [rbp - 8]
-   push rax
-
-   pop rax
-   mov rsi, rax
-   mov rdi, format_string
-   xor rax, rax
-   call printf
-   mov rax, QWORD [rbp - 8]
-   push rax
-
-   pop rax
-   mov rsi, rax
-   mov rdi, format_string
-   xor rax, rax
-   call printf
-
-   leave
-   ret
-
-function_test:
-   push rbp
-   mov rbp, rsp
-   sub rsp, 16
-
-   mov [rbp - 8], r10
-   push 10
-
-   pop rax
-   mov rsi, rax
-   mov rdi, format_number
-   xor rax, rax
-   call printf
-   mov rax, QWORD [rbp - 8]
-   push rax
-
-   pop rax
-   mov rsi, rax
-   mov rdi, format_string
-   xor rax, rax
-   call printf
-
-   push string_yo
-   pop r10
-   call function_test1
-   
-   leave
-   ret
-
 function_main:
    push rbp
    mov rbp, rsp
@@ -120,18 +46,52 @@ function_main:
 
    mov QWORD [rbp - 8], 10
 
-   push string_gkdsngkldsg
+.L0:
+   mov rax, QWORD [rbp - 8]
+   push rax
+   push 100
+
+   pop r8
+   pop r9
+   cmp r9, r8
+   jge .L1
+   mov rax, QWORD [rbp - 8]
+   push rax
+   pop r9
+   mov r8, r9
+   add r8, 1
+   push r8
+
+   pop r8
+   mov [rbp - 8], r8
+
+   mov rax, QWORD [rbp - 8]
+   push rax
+   pop r9
+   mov r8, r9
+   add r8, 10
+   push r8
+
 
    pop rax
    mov rsi, rax
-   mov rdi, format_string
+   mov rdi, format_number
+   xor rax, rax
+   call printf
+   jmp .L0
+   mov rax, QWORD [rbp - 8]
+   push rax
+
+   pop rax
+   mov rsi, rax
+   mov rdi, format_number
    xor rax, rax
    call printf
 
-   push string_yoyoyo
-   pop r10
-   call function_test
-   
+   jmp .L0
+
+.L1:
+
    push 0
    pop rdx
 

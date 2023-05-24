@@ -36,6 +36,11 @@
     generate_arithmetic((node)->data.binaryop.right);                          \
   }
 
+#define AS_IF_CONTROL_FLOW(node)                                               \
+  (node)->data.control_flow.control_flow_statement->data.if_stmt
+#define AS_WHILE_CONTROL_FLOW(node)                                            \
+  (node)->data.control_flow.control_flow_statement->data.while_stmt
+
 #define STACK_POSITION(pos) codegen_env.function_total_bytes_allocated - pos
 
 #define DECLARATION true
@@ -274,7 +279,7 @@ static char *comparison_op_to_jump_instruction(AstNodeType type) {
 static void generate_condition(AstNode *node) {
   codegen_env.string = init_string();
 
-  generate_asm(node);
+  generate_arithmetic(node);
 
   fprintf(codegen_env.file,
           "%s\n"
@@ -314,16 +319,11 @@ static void generate_local_variable(AstNode *node) {
     return;
 
   case AST_FUNCTION_CALL:
-    codegen_env.string = init_string();
 
-    generate_arithmetic(node->data.variable.value);
+    generate_asm(node->data.variable.value);
 
-    fprintf(codegen_env.file,
-            "\n%s"
-            "   mov [rbp - %d], rdx\n",
-            codegen_env.string->content,
+    fprintf(codegen_env.file, "   mov [rbp - %d], rdx\n",
             STACK_POSITION(node->data.variable.stack_pos));
-    free_string(codegen_env.string);
     break;
 
   default:
@@ -331,10 +331,11 @@ static void generate_local_variable(AstNode *node) {
 
     generate_arithmetic(node->data.variable.value);
 
-    fprintf(codegen_env.file, "%s", codegen_env.string->content);
     fprintf(codegen_env.file,
+            "%s"
             "   pop r8\n"
             "   mov [rbp - %d], r8\n\n",
+            codegen_env.string->content,
             STACK_POSITION(node->data.variable.stack_pos));
 
     free_string(codegen_env.string);
@@ -344,15 +345,11 @@ static void generate_local_variable(AstNode *node) {
 
 static void initialize_function_argumnets(AstNode *node) {
   for (int i = 0; i < node->data.function_call.arguments->size; i++) {
-    codegen_env.string = init_string();
 
     generate_arithmetic(node->data.function_call.arguments->items[i]);
-    fprintf(codegen_env.file,
-            "\n%s"
-            "   pop %s\n",
-            codegen_env.string->content, REGISTERS[i]);
 
-    free_string(codegen_env.string);
+    WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string, "   pop %s\n",
+                    REGISTERS[i]);
   }
 }
 
@@ -617,6 +614,17 @@ static void generate_arithmetic(AstNode *node) {
                     "   push r9\n\n",
                     node->data.unaryop.operand->data.integer_val);
     break;
+  case AST_FUNCTION_CALL:
+    if (node->data.function_decl.parameters->size > 0) {
+      initialize_function_argumnets(node);
+    }
+
+    WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
+                    "   call function_%s\n"
+                    "   %s\n",
+                    node->data.function_call.name,
+                    node->type == TYPE_VOID ? "" : "push rdx\n");
+    break;
   }
 }
 
@@ -634,6 +642,7 @@ static void generate_asm(AstNode *node) {
   case AST_IF_STATEMNET: {
     bool has_else = node->data.if_stmt.else_body != NULL;
     int end_label = codegen_env.label_sum;
+    node->data.if_stmt.end_label = end_label;
 
     generate_condition(node->data.if_stmt.condition);
 
@@ -653,6 +662,9 @@ static void generate_asm(AstNode *node) {
   case AST_WHILE_STATEMENT: {
     int start_label = codegen_env.label_sum;
     int end_label = codegen_env.label_sum + 1;
+    node->data.while_stmt.end_label = end_label;
+    node->data.while_stmt.start_label = start_label;
+
     codegen_env.label_sum++;
 
     fprintf(codegen_env.file, ".L%d:\n", start_label);
@@ -680,7 +692,36 @@ static void generate_asm(AstNode *node) {
     free_string(codegen_env.string);
     break;
 
+  case AST_BREAK_STATEMENT: {
+    switch (node->data.control_flow.control_flow_statement->type) {
+    case AST_IF_STATEMNET:
+      fprintf(codegen_env.file, "   jmp .L%d\n",
+              AS_IF_CONTROL_FLOW(node).end_label);
+
+    case AST_WHILE_STATEMENT:
+      fprintf(codegen_env.file, "   jmp .L%d\n",
+              AS_WHILE_CONTROL_FLOW(node).end_label);
+
+    default:
+      printf("yo, error at break stmt codegen generate_asm. gl");
+    }
+
+    break;
+  }
+
   case AST_CONTINUE_STATEMENT:
+    switch (node->data.control_flow.control_flow_statement->type) {
+    case AST_IF_STATEMNET:
+      fprintf(codegen_env.file, "   jmp .L%d\n",
+              AS_IF_CONTROL_FLOW(node).end_label);
+
+    case AST_WHILE_STATEMENT:
+      fprintf(codegen_env.file, "   jmp .L%d\n",
+              AS_WHILE_CONTROL_FLOW(node).start_label);
+
+    default:
+      printf("yo, error at CONTINURE stmt codegen generate_asm. gl");
+    }
     break;
 
   case AST_PRINT_STATEMENT:
@@ -718,15 +759,17 @@ static void generate_asm(AstNode *node) {
     break;
 
   case AST_FUNCTION_CALL:
+    codegen_env.string = init_string();
     if (node->data.function_decl.parameters->size > 0) {
       initialize_function_argumnets(node);
     }
 
     fprintf(codegen_env.file,
-            "   call function_%s\n"
-            "   %s",
-            node->data.function_call.name,
-            node->data_type != TYPE_VOID ? "push rdx\n" : "");
+            "%s"
+            "   call function_%s\n",
+            codegen_env.string->content, node->data.function_call.name);
+
+    free_string(codegen_env.string);
 
     break;
 
@@ -748,7 +791,6 @@ static void generate_asm(AstNode *node) {
     }
     break;
   default:
-    // Handle unknown node type
     break;
   }
 }
@@ -790,8 +832,6 @@ void codegen(AstNode *program, Table *string_table) {
   codegen_env.strings_table = string_table;
   codegen_env.string_block_array = init_string_array();
 
-  result =
-      evaluate(program->data.block.elements->items[0]->data.variable.value);
   setup_asm_file(program);
 
   printf("%s\n", codegen_env.file->_IO_buf_base);

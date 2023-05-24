@@ -19,6 +19,8 @@ typedef struct {
   EnvironmentArray *env_array;
   Table *string_table;
   int current_scope;
+  int control_flow_counter;
+  AstNode *current_control_flow;
   AstNode *current_function;
   bool has_error;
 
@@ -43,10 +45,12 @@ static void print_table(Table *table) {
 
 static void init_semantic_enviroment() {
   env.current_scope = 0;
+  env.control_flow_counter = 0;
   env.string_table = ALLOCATE(Table, 1);
   init_table(env.string_table);
   env.env_array = init_environment_array();
   env.current_function = NULL;
+  env.current_control_flow = NULL;
   env.has_error = false;
 }
 
@@ -299,6 +303,25 @@ static void semantic_check(AstNode *node) {
     break;
   }
 
+  case AST_BREAK_STATEMENT: {
+    if (env.control_flow_counter == 0) {
+      errorAt(node->line, "break",
+              "Cannot use break statemnet outside of control flow, (if/for).");
+    }
+    node->data.control_flow.control_flow_statement = env.current_control_flow;
+    break;
+  }
+
+  case AST_CONTINUE_STATEMENT: {
+    if (env.control_flow_counter == 0) {
+      errorAt(
+          node->line, "Continue",
+          "Cannot use continue statemnet outside of control flow, (if/for).");
+    }
+    node->data.control_flow.control_flow_statement = env.current_control_flow;
+    break;
+  }
+
   case AST_RETURN_STATEMENT: {
     // global scope
     if (env.current_function == NULL) {
@@ -424,6 +447,7 @@ static void semantic_check(AstNode *node) {
   }
 
   case AST_IF_STATEMNET: {
+    env.control_flow_counter++;
     if (env.current_scope == 0) {
       errorAt(node->line, "if", "Cannot declare if statement in global scope");
     }
@@ -433,6 +457,7 @@ static void semantic_check(AstNode *node) {
     if (node->data.if_stmt.condition->data_type != TYPE_BOOLEAN) {
       errorAt(node->line, "if", "Condition must be of type boolean");
     }
+    env.current_control_flow = node;
 
     // process then block of an if stmt
     semantic_check(node->data.if_stmt.then_body);
@@ -442,10 +467,12 @@ static void semantic_check(AstNode *node) {
       semantic_check(node->data.if_stmt.else_body);
     }
 
+    env.control_flow_counter--;
     break;
   }
 
   case AST_WHILE_STATEMENT: {
+    env.control_flow_counter++;
     if (env.current_scope == 0) {
       errorAt(node->line, "while",
               "Cannot declare while statement in global scope");
@@ -457,8 +484,11 @@ static void semantic_check(AstNode *node) {
       errorAt(node->line, "while", "Condition must be of type boolean");
     }
 
+    env.current_control_flow = node;
+
     // process then block of an while stmt
     semantic_check(node->data.while_stmt.then_body);
+    env.control_flow_counter--;
     break;
   }
 

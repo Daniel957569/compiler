@@ -81,7 +81,7 @@ AstNode *ast_create_variable_stmt(AstNodeType type, DataType data_type,
   node->data_type = data_type;
   node->type = type;
   node->data.variable.value = value;
-  node->data.variable.stack_pos = 4;
+  node->data.variable.stack_pos = 0;
   node->data.variable.string_hash = hash_string(name, strlen(name));
   node->data.variable.is_global = false;
   node->data.variable.name = name;
@@ -97,6 +97,7 @@ AstNode *ast_create_if_statement(AstNode *condition, AstNode *then_body,
   node->data.if_stmt.condition = condition;
   node->data.if_stmt.then_body = then_body;
   node->data.if_stmt.else_body = else_body;
+  node->data.if_stmt.end_label = 0;
   return node;
 }
 
@@ -106,8 +107,10 @@ AstNode *ast_create_while_statement(AstNode *condition, AstNode *then_body,
   node->line = line;
   node->data_type = TYPE_VOID;
   node->type = AST_WHILE_STATEMENT;
-  node->data.if_stmt.condition = condition;
-  node->data.if_stmt.then_body = then_body;
+  node->data.while_stmt.condition = condition;
+  node->data.while_stmt.then_body = then_body;
+  node->data.while_stmt.end_label = 0;
+  node->data.while_stmt.start_label = 0;
   return node;
 }
 
@@ -120,19 +123,21 @@ AstNode *ast_create_return_statement(DataType type, AstNode *value, int line) {
   return node;
 }
 
+AstNode *ast_create_control_flow_statement(AstNodeType type, int line) {
+  AstNode *node = ALLOCATE(AstNode, 1);
+  node->line = line;
+  node->type = type;
+  node->data_type = TYPE_VOID;
+  node->data.control_flow.control_flow_statement = NULL;
+  return node;
+}
+
 AstNode *ast_create_print_statement(DataType type, AstNode *value, int line) {
   AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->data_type = type;
   node->type = AST_PRINT_STATEMENT;
   node->data.return_stmt.value = value;
-  return node;
-}
-
-AstNode *ast_create_continue_statement(int line) {
-  AstNode *node = ALLOCATE(AstNode, 1);
-  node->line = line;
-  node->type = AST_CONTINUE_STATEMENT;
   return node;
 }
 

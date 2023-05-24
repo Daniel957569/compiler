@@ -1,23 +1,14 @@
 let hi: int = 10 + 10 * 10 * 10 + 10;
 
-fun test1(b: string) {
-    print b;
-    print b;
-    print b;
-    print b;
-}
-
-fun test(b: string) {
-    print 10;
-    print b;
-    test1("yo");
-}
 
 fun main(): int {
     let x: int = 10;
-    print "gkdsngkldsg";
-    test("yoyoyo");
-
+    while x < 100 {
+        x = x + 1;
+        print 10 + x;
+        continue
+        print x;
+    }
 
     return 0;
 }

@@ -440,13 +440,20 @@ static AstNode *return_statement() {
 
 static AstNode *continue_statement() {
   consume(TOKEN_SEMICOLON, "Expected ';' after continue statement");
-  return ast_create_continue_statement(current()->line);
+  return ast_create_control_flow_statement(AST_CONTINUE_STATEMENT,
+                                           current()->line);
 }
 
 static AstNode *print_statement() {
   AstNode *node = expr();
   consume(TOKEN_SEMICOLON, "Expected ; after print statement.");
   return ast_create_print_statement(TYPE_VOID, node, current()->line);
+}
+
+static AstNode *break_statement() {
+  consume(TOKEN_SEMICOLON, "Expected ; after break statement.");
+  return ast_create_control_flow_statement(AST_BREAK_STATEMENT,
+                                           current()->line);
 }
 
 static AstNode *statement() {
@@ -458,6 +465,8 @@ static AstNode *statement() {
     return return_statement();
   } else if (match(TOKEN_CONTINUE)) {
     return continue_statement();
+  } else if (match(TOKEN_BREAK)) {
+    return break_statement();
   } else if (match(TOKEN_PRINT)) {
     return print_statement();
   }

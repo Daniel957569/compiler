@@ -47,6 +47,7 @@ typedef enum {
   AST_WHILE_STATEMENT,
 
   AST_RETURN_STATEMENT,
+  AST_BREAK_STATEMENT,
   AST_CONTINUE_STATEMENT,
 
   AST_PRINT_STATEMENT,
@@ -99,13 +100,19 @@ typedef struct AstNode {
       struct AstNode *value;
     } variable;
     struct {
+      struct AstNode *control_flow_statement;
+    } control_flow;
+    struct {
       struct AstNode *condition;
       struct AstNode *then_body;
       struct AstNode *else_body;
+      int end_label;
     } if_stmt;
     struct {
       struct AstNode *condition;
       struct AstNode *then_body;
+      int end_label;
+      int start_label;
     } while_stmt;
     struct {
       struct AstNode *value;
@@ -147,13 +154,14 @@ AstNode *ast_create_while_statement(AstNode *condition, AstNode *then_body,
                                     int line);
 AstNode *ast_create_return_statement(DataType type, AstNode *value, int line);
 AstNode *ast_create_print_statement(DataType type, AstNode *value, int line);
-AstNode *ast_create_continue_statement(int line);
 AstNode *ast_create_function_declaration(DataType type,
                                          const char *function_name,
                                          IdentifierArray *parameters,
                                          AstNode *function_body, int line);
 AstNode *ast_create_function_call(const char *function_name,
                                   AstArray *arguments, int line);
+
+AstNode *ast_create_control_flow_statement(AstNodeType type ,int line);
 
 AstNode *ast_create_block(AstNodeType type, int line);
 

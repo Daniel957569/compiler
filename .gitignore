@@ -3,4 +3,4 @@
 /build/CMakeCache.txt
 /build/*.exe
 /build/Makefile
-/build/*o
+/build/*.o
