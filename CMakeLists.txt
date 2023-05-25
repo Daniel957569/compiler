@@ -13,5 +13,6 @@ add_executable(
     utils/array.c utils/array.h
     tests/test_scanner.h tests/test_scanner.c
     tests/test_parser.h tests/test_parser.c
+    tests/test_codegen.h tests/test_codegen.c
 )
 

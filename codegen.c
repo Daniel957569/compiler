@@ -3,9 +3,11 @@
 #include "memory.h"
 #include "semantic_check.h"
 #include "utils/array.h"
+#include "utils/table.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define WRITE_TO_STRING(dest, source, format, ...)                             \
   sprintf(source, format, ##__VA_ARGS__);                                      \
@@ -73,6 +75,14 @@ static void init_codegen_enviroment() {
   codegen_env.function_total_bytes_allocated = 0;
 }
 
+static char *fill_whitespaces(char *str) {
+  for (int i = 0; i < strlen(str); i++) {
+    if (str[i] == ' ' || str[i] == ':' || str[i] == ';')
+      str[i] = '_';
+  }
+  return str;
+}
+
 static void generate_asm(AstNode *program);
 
 static FILE *open_file(const char *path) {
@@ -123,6 +133,14 @@ static char *data_type_to_register(DataType type) {
   }
 }
 
+static int align_function_stack(int total_bytes) {
+#define ALIGNMENT 16
+  int remainder = total_bytes % ALIGNMENT;
+  int aligned_value =
+      total_bytes + (remainder != 0 ? ALIGNMENT - remainder : 0);
+  return aligned_value;
+}
+
 static void declare_global_vars(AstNode *program) {
   fprintf(codegen_env.file, "; global variabless\n");
   for (int i = 0; i < AS_LIST_SIZE(program); i++) {
@@ -143,11 +161,11 @@ static void generate_global_variables(AstNode *node) {
   case AST_STRING:
     WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
                     "\n; start of %s\n"
-                    "   mov rdi, string_%s\n"
+                    "   mov rdi, %s_string\n"
                     "   mov [%s], rdi\n"
                     "; end of %s\n\n",
                     node->data.variable.name,
-                    node->data.variable.value->data.str,
+                    fill_whitespaces(node->data.variable.value->data.str),
                     node->data.variable.name, node->data.variable.name);
 
     break;
@@ -189,11 +207,16 @@ static void generate_strings() {
   fprintf(codegen_env.file, "\n; Strings\n");
   for (int i = 0; i < codegen_env.strings_table->capacity; i++) {
     if (codegen_env.strings_table->entries[i].key != NULL) {
-      char var_name[20];
       Entry entry = codegen_env.strings_table->entries[i];
 
-      sprintf(var_name, "string_%s", codegen_env.strings_table->entries[i].key);
+      // 7 for "string_"
+      // surely there is a better way, but cant be bothered. sorry, mby later.
+      char var_name[strlen(entry.key) + 100];
+      strcpy(var_name, entry.key);
+      sprintf(var_name, "%s_string", fill_whitespaces(var_name));
+
       fprintf(codegen_env.file, "%s db \"%s\", 0\n", var_name, entry.key);
+      entry.key = var_name;
     }
   }
   fprintf(codegen_env.file, "\n");
@@ -285,7 +308,7 @@ static void generate_condition(AstNode *node) {
           "%s\n"
           "   pop r8\n"
           "   pop r9\n"
-          "   cmp r9, r8\n"
+          "   cmp r8, r9\n"
           "   %s .L%d\n",
           codegen_env.string->content,
           comparison_op_to_jump_instruction(node->type), codegen_env.label_sum);
@@ -298,9 +321,9 @@ static void generate_local_variable(AstNode *node) {
   switch (node->data.variable.value->type) {
   case AST_STRING:
     fprintf(codegen_env.file,
-            "   mov rdi, string_%s\n"
+            "   mov rdi, %s_string\n"
             "   mov [rbp - %d], rdi\n\n",
-            node->data.variable.value->data.str,
+            fill_whitespaces(node->data.variable.value->data.str),
             STACK_POSITION(node->data.variable.stack_pos));
     return;
 
@@ -407,7 +430,7 @@ static void generate_arithmetic(AstNode *node) {
     break;
   case AST_STRING:
     WRITE_TO_STRING(codegen_env.string, codegen_env.temp_string,
-                    "   push string_%s\n", node->data.str);
+                    "   push %s_string\n", fill_whitespaces(node->data.str));
     // Handle string node
     break;
   case AST_IDENTIFIER_REFRENCE:
@@ -736,8 +759,9 @@ static void generate_asm(AstNode *node) {
     break;
 
   case AST_FUNCTION:
-    codegen_env.function_total_bytes_allocated =
-        node->data.function_decl.byte_allocated;
+    node->data.function_decl.byte_allocated =
+        codegen_env.function_total_bytes_allocated =
+            align_function_stack(node->data.function_decl.byte_allocated);
 
     fprintf(codegen_env.file,
             "\nfunction_%s:\n"
@@ -839,4 +863,7 @@ void codegen(AstNode *program, Table *string_table) {
 
   system("nasm -f elf64 code.asm && gcc -no-pie -o code code.o asm_link.c && "
          "./code");
+
+  free_tree(program);
+  free_table(string_table);
 }

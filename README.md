@@ -20,7 +20,6 @@ git clone https://github.com/Daniel957569/compiler.git
 
 ```shell
 cd compiler
-mkdir build
 cd build
 ```
 

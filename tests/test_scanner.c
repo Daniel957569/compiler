@@ -4,20 +4,41 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void testScanner() {
+void test_scanner() {
   const char *source = readFile("../tests/test_ex.txt");
-  TokenType correctPattern[14] = {
-      TOKEN_FUN,       TOKEN_IDENTIFIER, TOKEN_LEFT_PAREN,  TOKEN_IDENTIFIER,
-      TOKEN_COMMA,     TOKEN_IDENTIFIER, TOKEN_RIGHT_PAREN, TOKEN_LEFT_BRACE,
-      TOKEN_LET,       TOKEN_IDENTIFIER, TOKEN_EQUAL,       TOKEN_NUMBER,
-      TOKEN_SEMICOLON, TOKEN_RIGHT_BRACE};
+  TokenType correctPattern[74] = {
+      TOKEN_FUN,          TOKEN_IDENTIFIER,   TOKEN_LEFT_PAREN,
+      TOKEN_IDENTIFIER,   TOKEN_COLONS,       TOKEN_INTEGER_TYPE,
+      TOKEN_COMMA,        TOKEN_IDENTIFIER,   TOKEN_COLONS,
+      TOKEN_STRING_TYPE,  TOKEN_RIGHT_PAREN,  TOKEN_COLONS,
+      TOKEN_INTEGER_TYPE, TOKEN_LEFT_BRACE,   TOKEN_LET,
+      TOKEN_IDENTIFIER,   TOKEN_COLONS,       TOKEN_INTEGER_TYPE,
+      TOKEN_EQUAL,        TOKEN_NUMBER,       TOKEN_SEMICOLON,
+      TOKEN_WHILE,        TOKEN_IDENTIFIER,   TOKEN_GREATER,
+      TOKEN_IDENTIFIER,   TOKEN_LEFT_BRACE,   TOKEN_IDENTIFIER,
+      TOKEN_EQUAL,        TOKEN_IDENTIFIER,   TOKEN_PLUS,
+      TOKEN_NUMBER,       TOKEN_SEMICOLON,    TOKEN_PRINT,
+      TOKEN_IDENTIFIER,   TOKEN_PLUS,         TOKEN_IDENTIFIER,
+      TOKEN_SEMICOLON,    TOKEN_PRINT,        TOKEN_IDENTIFIER,
+      TOKEN_SEMICOLON,    TOKEN_RIGHT_BRACE,  TOKEN_RETURN,
+      TOKEN_IDENTIFIER,   TOKEN_SEMICOLON,    TOKEN_RIGHT_BRACE,
+      TOKEN_FUN,          TOKEN_IDENTIFIER,   TOKEN_LEFT_PAREN,
+      TOKEN_RIGHT_PAREN,  TOKEN_COLONS,       TOKEN_INTEGER_TYPE,
+      TOKEN_LEFT_BRACE,   TOKEN_LET,          TOKEN_IDENTIFIER,
+      TOKEN_COLONS,       TOKEN_INTEGER_TYPE, TOKEN_EQUAL,
+      TOKEN_IDENTIFIER,   TOKEN_LEFT_PAREN,   TOKEN_NUMBER,
+      TOKEN_COMMA,        TOKEN_STRING,       TOKEN_RIGHT_PAREN,
+      TOKEN_SEMICOLON,    TOKEN_PRINT,        TOKEN_STRING,
+      TOKEN_SEMICOLON,    TOKEN_PRINT,        TOKEN_IDENTIFIER,
+      TOKEN_SEMICOLON,    TOKEN_RETURN,       TOKEN_NUMBER,
+      TOKEN_SEMICOLON,    TOKEN_RIGHT_BRACE};
 
   Token *output = getTokens(source);
 
   int i = 0;
   while (output->type != TOKEN_EOF) {
     if (output->type != correctPattern[i]) {
-      printf("Wrong Token produced\n");
+      printf("Wrong Token produced. index: %d\n", i);
       exit(64);
     }
     i++;

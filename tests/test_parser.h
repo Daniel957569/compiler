@@ -4,6 +4,6 @@
 #include "../common.h"
 #include "../parser.h"
 
-bool testParser();
+bool test_parser();
 
 #endif

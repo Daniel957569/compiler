@@ -4,6 +4,7 @@
 #include "parser.h"
 #include "scanner.h"
 #include "semantic_check.h"
+#include "tests/test_codegen.h"
 #include "tests/test_parser.h"
 #include "tests/test_scanner.h"
 #include "utils/array.h"
@@ -93,8 +94,9 @@ static void runFile(const char *path) {
 
 int main(int argc, const char *argv[]) {
   if (strcmp(argv[1], "--test") == 0 && argc == 2) {
-    testScanner();
-    testParser();
+    test_scanner();
+    test_parser();
+    test_codegen();
     return 0;
   }
 

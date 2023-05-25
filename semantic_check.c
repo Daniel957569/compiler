@@ -333,7 +333,8 @@ static void semantic_check(AstNode *node) {
       semantic_check(node->data.return_stmt.value);
     }
 
-    if (env.current_function->data_type != node->data_type) {
+    if (env.current_function->data_type != node->data.return_stmt.value->data_type) {
+        printf("%d %d\n", env.current_function->data_type, node->data_type);
       errorAt(node->line, "return",
               "return type does not match function return type");
     }
@@ -414,7 +415,6 @@ static void semantic_check(AstNode *node) {
 
   case AST_LET_DECLARATION: {
     if (env.current_scope > 0) {
-      // so if allocated bytes is 4 its location on the stack is just rsp
       node->data.variable.stack_pos =
           env.current_function->data.function_decl.byte_allocated;
 
@@ -430,14 +430,13 @@ static void semantic_check(AstNode *node) {
       }
     }
 
-    // add variable name to the current scope table
+    Symbol *variable = init_symbol(node, VARIABLE_TYPE, node->data_type,
+                                   node->data.variable.stack_pos);
     table_set(AS_TABLE(env.current_scope), AS_VARIABLE_NAME(node),
-              AS_VARIABLE_HASH(node),
-              init_symbol(node, VARIABLE_TYPE, node->data_type,
-                          node->data.variable.stack_pos));
+              AS_VARIABLE_HASH(node), variable);
 
     semantic_check(AS_VARIABLE_VALUE(node));
-    // check if the variable type matches the values assgined
+
     if (node->data_type != AS_VARIABLE_VALUE(node)->data_type) {
       errorAt(node->line, AS_VARIABLE_NAME(node),
               "Type definition does not match value type");
@@ -503,17 +502,17 @@ static void semantic_check(AstNode *node) {
 #define AS_ARGUMENT(node, index)                                               \
   (node)->data.function_call.arguments->items[(index)]
 
-    AstNode *function =
+    AstNode *calle_function =
         ast_create_function_declaration(TYPE_VOID, "yo", NULL, NULL, 1);
-    Symbol *identifier = init_symbol(function, FUNCTION_TYPE, TYPE_VOID, 0);
+    Symbol *identifier =
+        init_symbol(calle_function, FUNCTION_TYPE, TYPE_VOID, 0);
 
-    // check if there is definition of the function
     bool has_definition = false;
     for (int i = env.current_scope; i >= 0; i--) {
+      const char *func_name = AS_FUNCTION_CALL(node).name;
+      int string_hash = AS_FUNCTION_CALL(node).string_hash;
 
-      if (table_get_function(AS_TABLE(i), AS_FUNCTION_CALL(node).name,
-                             AS_FUNCTION_CALL(node).string_hash, identifier)) {
-        // check to see if the identifier is a function or variable
+      if (table_get_function(AS_TABLE(i), func_name, string_hash, identifier)) {
         if (identifier->type != FUNCTION_TYPE) {
           errorAt(node->line, node->data.function_call.name,
                   "Variable is not a function calle.");
@@ -534,7 +533,6 @@ static void semantic_check(AstNode *node) {
       break;
     }
 
-    // check if parameters and arguments size is equal
     if (AS_FUNCTION_DECL_SIZE(identifier) != AS_FUNCTION_CALL_SIZE(node)) {
       char error[100];
       sprintf(error, "Function '%s' takes %d arguments but %d were given",
@@ -547,7 +545,6 @@ static void semantic_check(AstNode *node) {
       // reslove argument first
       semantic_check(AS_ARGUMENT(node, i));
 
-      // compare parameters and argument
       if (AS_PARAMETER(identifier->value, i)->data_type !=
           AS_ARGUMENT(node, i)->data_type) {
         char error[100];
@@ -561,7 +558,11 @@ static void semantic_check(AstNode *node) {
   }
 
   case AST_FUNCTION: {
-    // add function declaration inside a function if possible later on
+#define START_SCOPE()                                                          \
+  env.current_scope++;                                                         \
+  env.current_function = node;                                                 \
+  init_environment();
+
     if (env.current_scope > 0) {
       errorAt(node->line, node->data.function_decl.name,
               "Cannot define a function inside of a function");
@@ -581,18 +582,17 @@ static void semantic_check(AstNode *node) {
               "Cannot redefine function.");
     }
 
-    // start function scope here to fit in the parameters
-    env.current_scope++;
-    env.current_function = node;
+    START_SCOPE()
 
-    // add parameters to function scope
-    init_environment();
     for (int i = 0; i < node->data.function_decl.parameters->size; i++) {
-      if (!table_set(AS_TABLE(env.current_scope), AS_PARAMETER(node, i)->name,
-                     AS_PARAMETER(node, i)->hash,
-                     init_symbol(NULL, PARAMETER_TYPE,
-                                 AS_PARAMETER(node, i)->data_type,
-                                 node->data.function_decl.byte_allocated))) {
+      Symbol *symbol =
+          init_symbol(NULL, PARAMETER_TYPE, AS_PARAMETER(node, i)->data_type,
+                      node->data.function_decl.byte_allocated);
+      int hash = AS_PARAMETER(node, i)->hash;
+      char *name = AS_PARAMETER(node, i)->name;
+      Table *table = AS_TABLE(env.current_scope);
+
+      if (!table_set(table, name, hash, symbol)) {
         errorAt(node->line, node->data.function_decl.name,
                 "Cannot redefine parameters.");
       }

@@ -9,9 +9,10 @@ section .data
   format_false db "false", 10, 0
 
 ; Strings
+the_result_is___string db "the result is: ", 0
+Hello_World_string db "Hello World", 0
 
 ; global variabless
-hi dq 0
 
 section .text
 	extern printf
@@ -39,23 +40,26 @@ print_not_equal:
    syscall
    ret
 
-function_main:
+function_x:
    push rbp
    mov rbp, rsp
-   sub rsp, 16
+   sub rsp, 32
 
-   mov QWORD [rbp - 8], 10
+   mov [rbp - 24], r10
+   mov [rbp - 16], r11
+   mov QWORD [rbp - 8], 69
 
 .L0:
+   mov rax, QWORD [rbp - 24]
+   push rax
    mov rax, QWORD [rbp - 8]
    push rax
-   push 100
 
    pop r8
    pop r9
-   cmp r9, r8
-   jge .L1
-   mov rax, QWORD [rbp - 8]
+   cmp r8, r9
+   jle .L1
+   mov rax, QWORD [rbp - 24]
    push rax
    pop r9
    mov r8, r9
@@ -63,14 +67,16 @@ function_main:
    push r8
 
    pop r8
-   mov [rbp - 8], r8
+   mov [rbp - 24], r8
 
    mov rax, QWORD [rbp - 8]
    push rax
+   mov rax, QWORD [rbp - 24]
+   push rax
    pop r9
-   mov r8, r9
-   add r8, 10
-   push r8
+   pop r10
+   add r9, r10
+   push r9
 
 
    pop rax
@@ -78,19 +84,52 @@ function_main:
    mov rdi, format_number
    xor rax, rax
    call printf
-   jmp .L0
-   mov rax, QWORD [rbp - 8]
+   mov rax, QWORD [rbp - 16]
    push rax
 
    pop rax
    mov rsi, rax
-   mov rdi, format_number
+   mov rdi, format_string
    xor rax, rax
    call printf
 
    jmp .L0
 
 .L1:
+
+   mov rax, QWORD [rbp - 8]
+   push rax
+   pop rdx
+
+   leave
+   ret
+
+function_main:
+   push rbp
+   mov rbp, rsp
+   sub rsp, 16
+
+   push 100
+   pop r10
+   push Hello_World_string
+   pop r11
+   call function_x
+   mov [rbp - 8], rdx
+   push the_result_is___string
+
+   pop rax
+   mov rsi, rax
+   mov rdi, format_string
+   xor rax, rax
+   call printf
+   mov rax, QWORD [rbp - 8]
+   push rax
+
+   pop rax
+   mov rsi, rax
+   mov rdi, format_number
+   xor rax, rax
+   call printf
 
    push 0
    pop rdx
@@ -101,26 +140,6 @@ function_main:
 asm_start:
    push rbp
    mov rbp, rsp
-   mov r9, 10
-   imul r9, 10
-   push r9
-
-   pop r9
-   imul r9, 10
-   push r9
-
-   pop r9
-   mov r8, r9
-   add r8, 10
-   push r8
-
-   pop r9
-   mov r8, r9
-   add r8, 10
-   push r8
-
-   pop r8
-   mov QWORD [hi], r8
 
    call function_main
    call end
