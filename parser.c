@@ -2,6 +2,7 @@
 #include "./utils/array.h"
 #include "ast.h"
 #include "common.h"
+#include "scanner.h"
 #include "semantic_check.h"
 #include <string.h>
 
@@ -171,9 +172,7 @@ static DataType variable_type() {
   case TOKEN_VOID_TYPE:
     return TYPE_VOID;
   default:
-    parser.inPanicMode = true;
-    errorAtCurrent("Expected valid variable type.");
-    return TYPE_VOID;
+    return TYPE_STRCUT;
   }
 }
 
@@ -513,6 +512,17 @@ static AstNode *function_delclaration() {
                                          fun_block, current()->line);
 }
 
+static AstNode *strcut_statement() {
+  consume(TOKEN_IDENTIFIER, "Expected identifier after struct delclaration");
+  consume(TOKEN_LEFT_PAREN, "Expected '{' after struct identifier.");
+
+  while (!match(TOKEN_RIGHT_BRACE)) {
+    DataType type = variable_type();
+    char *field_name = parseName(current());
+    consume(TOKEN_SEMICOLON, "Expected ';' after struct field declaration.");
+  }
+}
+
 static AstNode *declaration() {
   if (parser.inPanicMode)
     synchronize();
@@ -521,6 +531,8 @@ static AstNode *declaration() {
     return let_declaration();
   } else if (match(TOKEN_FUN)) {
     return function_delclaration();
+  } else if (match(TOKEN_STRUCT)) {
+    return strcut_statement();
   }
 
   return statement();

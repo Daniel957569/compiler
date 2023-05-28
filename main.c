@@ -93,6 +93,11 @@ static void runFile(const char *path) {
 }
 
 int main(int argc, const char *argv[]) {
+  if (argc == 1) {
+    printf("Please enter a path to a file as an argument.\n");
+    return 0;
+  }
+
   if (strcmp(argv[1], "--test") == 0 && argc == 2) {
     test_scanner();
     test_parser();

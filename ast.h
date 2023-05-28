@@ -65,7 +65,8 @@ typedef enum {
   TYPE_BOOLEAN,
   TYPE_INTEGER,
   TYPE_FLOAT,
-  TYPE_STRING
+  TYPE_STRING,
+  TYPE_STRCUT
 } DataType;
 
 typedef struct Identifier {
@@ -132,6 +133,9 @@ typedef struct AstNode {
       u_int32_t string_hash;
       AstArray *arguments;
     } function_call;
+    struct {
+
+    } struct_decl;
     struct { // block, program_node
       AstArray *elements;
     } block;
@@ -161,7 +165,7 @@ AstNode *ast_create_function_declaration(DataType type,
 AstNode *ast_create_function_call(const char *function_name,
                                   AstArray *arguments, int line);
 
-AstNode *ast_create_control_flow_statement(AstNodeType type ,int line);
+AstNode *ast_create_control_flow_statement(AstNodeType type, int line);
 
 AstNode *ast_create_block(AstNodeType type, int line);
 
