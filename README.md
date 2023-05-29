@@ -54,3 +54,16 @@ To execute code written in the custom language, follow these steps:
 The compiled executable will be saved in the directory in which cmake resides,
 in this case the Build directory
 
+
+## Features
+1. while loops
+2. if statement
+2. function declaration && parameters
+3. function calling && arguments
+4. local && global varaibles
+5. global && local scopes
+6. types: string, int, bool, TODO: float, TODO: struct, TODO: arrays
+7. TODO: structs
+8. TODO: arrays
+
+i'll finish the todos whenever :)
