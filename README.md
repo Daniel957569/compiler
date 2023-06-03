@@ -6,7 +6,8 @@ My toy compiler.
 
 - CMake (version 3.5.2 or higher)
 - Make
-- C Compiler 
+- C compiler(gcc)
+- linux, could also use wsl
 
 ## Getting Started
 
@@ -66,5 +67,7 @@ in this case the Build directory
 7. staticly typed
 8. TODO: structs
 9. TODO: arrays
+
+working on struct...
 
 i'll finish the todos whenever :)
