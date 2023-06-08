@@ -52,6 +52,9 @@ typedef enum {
 
   AST_PRINT_STATEMENT,
 
+  AST_STRUCT_FIELD,
+  AST_STRUCT_DECLARATION,
+
   AST_FUNCTION,
   AST_FUNCTION_CALL,
 
@@ -134,7 +137,8 @@ typedef struct AstNode {
       AstArray *arguments;
     } function_call;
     struct {
-
+      const char *name;
+      AstArray *fields;
     } struct_decl;
     struct { // block, program_node
       AstArray *elements;
@@ -150,6 +154,7 @@ AstNode *ast_create_unaryop(AstNodeType type, AstNode *operand, int line);
 AstNode *ast_create_boolean(AstNodeType type, bool boolean, int line);
 AstNode *ast_create_string(char *str, int line);
 AstNode *ast_create_identifier_refrence(const char *str, int line);
+AstNode *ast_create_strcut_field(const char *str, DataType type);
 AstNode *ast_create_variable_stmt(AstNodeType type, DataType data_type,
                                   const char *name, int line, AstNode *value);
 AstNode *ast_create_if_statement(AstNode *condition, AstNode *then_body,
@@ -164,6 +169,9 @@ AstNode *ast_create_function_declaration(DataType type,
                                          AstNode *function_body, int line);
 AstNode *ast_create_function_call(const char *function_name,
                                   AstArray *arguments, int line);
+
+AstNode *ast_create_struct_declaration(const char *strcut_name,
+                                       AstArray *fields, int line);
 
 AstNode *ast_create_control_flow_statement(AstNodeType type, int line);
 

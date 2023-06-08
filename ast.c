@@ -74,6 +74,14 @@ AstNode *ast_create_identifier_refrence(const char *str, int line) {
   return node;
 }
 
+AstNode *ast_create_strcut_field(const char *str, DataType type) {
+  AstNode *node = ALLOCATE(AstNode, 1);
+  node->type = AST_STRUCT_FIELD;
+  node->data_type = type;
+  node->data.identifier_refrence = str;
+  return node;
+}
+
 AstNode *ast_create_variable_stmt(AstNodeType type, DataType data_type,
                                   const char *name, int line, AstNode *value) {
   AstNode *node = ALLOCATE(AstNode, 1);
@@ -168,6 +176,16 @@ AstNode *ast_create_function_call(const char *function_name,
   node->data.function_call.name = function_name;
   node->data.function_call.string_hash =
       hash_string(function_name, strlen(function_name));
+  return node;
+}
+
+AstNode *ast_create_struct_declaration(const char *struct_name,
+                                       AstArray *fields, int line) {
+  AstNode *node = ALLOCATE(AstNode, 1);
+  node->type = AST_STRUCT_DECLARATION;
+  node->data_type = TYPE_VOID;
+  node->data.struct_decl.fields = fields;
+  node->data.struct_decl.name = struct_name;
   return node;
 }
 

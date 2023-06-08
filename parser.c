@@ -514,13 +514,18 @@ static AstNode *function_delclaration() {
 
 static AstNode *strcut_statement() {
   consume(TOKEN_IDENTIFIER, "Expected identifier after struct delclaration");
+  char *struct_name = parseName(previous());
   consume(TOKEN_LEFT_PAREN, "Expected '{' after struct identifier.");
+
+  AstArray *fields = init_ast_array();
 
   while (!match(TOKEN_RIGHT_BRACE)) {
     DataType type = variable_type();
     char *field_name = parseName(current());
     consume(TOKEN_SEMICOLON, "Expected ';' after struct field declaration.");
+    push_ast_array(fields, ast_create_identifier_refrence(field_name, type));
   }
+  return ast_create_struct_declaration(struct_name, fields, current()->line);
 }
 
 static AstNode *declaration() {

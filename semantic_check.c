@@ -333,8 +333,9 @@ static void semantic_check(AstNode *node) {
       semantic_check(node->data.return_stmt.value);
     }
 
-    if (env.current_function->data_type != node->data.return_stmt.value->data_type) {
-        printf("%d %d\n", env.current_function->data_type, node->data_type);
+    if (env.current_function->data_type !=
+        node->data.return_stmt.value->data_type) {
+      printf("%d %d\n", env.current_function->data_type, node->data_type);
       errorAt(node->line, "return",
               "return type does not match function return type");
     }
@@ -616,6 +617,9 @@ static void semantic_check(AstNode *node) {
 
     break;
   }
+
+  case AST_STRUCT_DECLARATION:
+    break;
 
   case AST_BLOCK: {
     // if its a function the block has already made to fit in the
