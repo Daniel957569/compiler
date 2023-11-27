@@ -102,6 +102,7 @@ typedef struct AstNode {
       int stack_pos;
       bool is_global;
       struct AstNode *value;
+      const char *struct_name;
     } variable;
     struct {
       struct AstNode *control_flow_statement;
@@ -139,6 +140,8 @@ typedef struct AstNode {
     struct {
       const char *name;
       AstArray *fields;
+      u_int32_t string_hash;
+      int byte_allocated;
     } struct_decl;
     struct { // block, program_node
       AstArray *elements;
@@ -154,9 +157,10 @@ AstNode *ast_create_unaryop(AstNodeType type, AstNode *operand, int line);
 AstNode *ast_create_boolean(AstNodeType type, bool boolean, int line);
 AstNode *ast_create_string(char *str, int line);
 AstNode *ast_create_identifier_refrence(const char *str, int line);
-AstNode *ast_create_strcut_field(const char *str, DataType type);
+AstNode *ast_create_struct_field(const char *str, DataType type);
 AstNode *ast_create_variable_stmt(AstNodeType type, DataType data_type,
-                                  const char *name, int line, AstNode *value);
+                                  const char *name, int line, AstNode *value,
+                                  const char *struct_name);
 AstNode *ast_create_if_statement(AstNode *condition, AstNode *then_body,
                                  AstNode *else_body, int line);
 AstNode *ast_create_while_statement(AstNode *condition, AstNode *then_body,

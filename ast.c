@@ -74,7 +74,7 @@ AstNode *ast_create_identifier_refrence(const char *str, int line) {
   return node;
 }
 
-AstNode *ast_create_strcut_field(const char *str, DataType type) {
+AstNode *ast_create_struct_field(const char *str, DataType type) {
   AstNode *node = ALLOCATE(AstNode, 1);
   node->type = AST_STRUCT_FIELD;
   node->data_type = type;
@@ -83,7 +83,8 @@ AstNode *ast_create_strcut_field(const char *str, DataType type) {
 }
 
 AstNode *ast_create_variable_stmt(AstNodeType type, DataType data_type,
-                                  const char *name, int line, AstNode *value) {
+                                  const char *name, int line, AstNode *value,
+                                  const char *struct_name) {
   AstNode *node = ALLOCATE(AstNode, 1);
   node->line = line;
   node->data_type = data_type;
@@ -93,6 +94,7 @@ AstNode *ast_create_variable_stmt(AstNodeType type, DataType data_type,
   node->data.variable.string_hash = hash_string(name, strlen(name));
   node->data.variable.is_global = false;
   node->data.variable.name = name;
+  node->data.variable.struct_name = struct_name;
   return node;
 }
 
@@ -186,6 +188,7 @@ AstNode *ast_create_struct_declaration(const char *struct_name,
   node->data_type = TYPE_VOID;
   node->data.struct_decl.fields = fields;
   node->data.struct_decl.name = struct_name;
+  node->line = line;
   return node;
 }
 
@@ -351,6 +354,17 @@ static void print_arguments(AstArray *array, int depth) {
   }
 }
 
+static void print_struct_fields(AstArray *array, int depth) {
+  for (int i = 0; i < array->size; i++) {
+    for (int i = 0; i < depth; i++) {
+      printf("  ");
+    }
+
+    printf("%s: %s\n", array->items[i]->data.identifier_refrence,
+           type_to_string(array->items[i]->data_type));
+  }
+}
+
 static void print(const char *string, int depth) {
   for (int i = 0; i < depth; i++) {
     printf("  ");
@@ -464,8 +478,10 @@ void print_ast(AstNode *node, int depth) {
   case AST_LET_DECLARATION:
     printf("Declaration\n");
     char str1[100];
+
     sprintf(str1, "%s: %s", node->data.variable.name,
-            type_to_string(node->data_type));
+            node->data_type == TYPE_STRCUT ? node->data.variable.struct_name
+                                           : type_to_string(node->data_type));
 
     print(str1, depth + 1);
     print_ast(node->data.variable.value, depth + 2);
@@ -534,6 +550,12 @@ void print_ast(AstNode *node, int depth) {
     printf("%s\n", node->data.function_call.name);
     print("Arguments: ", depth + 1);
     print_arguments(node->data.function_call.arguments, depth + 2);
+    break;
+
+  case AST_STRUCT_DECLARATION:
+    printf("Struct %s:\n", node->data.struct_decl.name);
+    print_struct_fields(node->data.struct_decl.fields, depth + 1);
+
     break;
 
   case AST_BLOCK:

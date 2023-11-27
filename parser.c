@@ -176,6 +176,16 @@ static DataType variable_type() {
   }
 }
 
+static char *get_type(DataType type) {
+  char *type_name = previous()->start;
+  switch (type) {
+  case TYPE_STRCUT:
+    return type_name;
+  default:
+    return NULL;
+  }
+}
+
 static AstNode *expr();
 static AstNode *comparison();
 static AstNode *declaration();
@@ -252,7 +262,7 @@ static AstNode *primary() {
   if (match(TOKEN_IDENTIFIER)) {
     return ast_create_variable_stmt(AST_IDENTIFIER_REFRENCE, TYPE_STRING,
                                     parseName(previous()), current()->line,
-                                    NULL);
+                                    NULL, previous()->start);
   }
 
   consume(TOKEN_LEFT_PAREN, "Expected '(' before Expression.");
@@ -273,7 +283,8 @@ static AstNode *call() {
 
       AstNode *node = expr();
       return ast_create_variable_stmt(AST_VAR_ASSIGNMENT, node->data_type,
-                                      calle, current()->line, node);
+                                      calle, current()->line, node,
+                                      previous()->start);
     }
 
     // function callling
@@ -480,6 +491,7 @@ static AstNode *let_declaration() {
   consume(TOKEN_COLONS, "Expected ':' after after variable declaration.");
   // add struct later on
   DataType type = variable_type();
+  char *type_name = get_type(type);
 
   AstNode *node;
   if (match(TOKEN_EQUAL)) {
@@ -490,13 +502,14 @@ static AstNode *let_declaration() {
   consume(TOKEN_SEMICOLON, "Expected ';' after Expression");
 
   return ast_create_variable_stmt(AST_LET_DECLARATION, type, varName,
-                                  current()->line, node);
+                                  current()->line, node, type_name);
 }
 
 static AstNode *function_delclaration() {
   // fun foo(): integer {}
   const char *varName = parseName(current());
   consume(TOKEN_IDENTIFIER, "Expected IDENTIFIER after 'fun'");
+  int function_line = current()->line;
 
   consume(TOKEN_LEFT_PAREN, "Expected '(' before function arguments");
   IdentifierArray *parameters_array = parameters();
@@ -509,23 +522,28 @@ static AstNode *function_delclaration() {
   AstNode *fun_block = block();
 
   return ast_create_function_declaration(type, varName, parameters_array,
-                                         fun_block, current()->line);
+                                         fun_block, function_line);
 }
 
 static AstNode *strcut_statement() {
   consume(TOKEN_IDENTIFIER, "Expected identifier after struct delclaration");
   char *struct_name = parseName(previous());
-  consume(TOKEN_LEFT_PAREN, "Expected '{' after struct identifier.");
+  consume(TOKEN_LEFT_BRACE, "Expected '{' after struct identifier.");
+  int struct_line = current()->line;
 
   AstArray *fields = init_ast_array();
 
   while (!match(TOKEN_RIGHT_BRACE)) {
-    DataType type = variable_type();
     char *field_name = parseName(current());
-    consume(TOKEN_SEMICOLON, "Expected ';' after struct field declaration.");
-    push_ast_array(fields, ast_create_identifier_refrence(field_name, type));
+    advance();
+    consume(TOKEN_COLONS, "Expected ':' after struct field declaration.");
+
+    DataType type = variable_type();
+    consume(TOKEN_COMMA, "Expected ',' after struct field type.");
+
+    push_ast_array(fields, ast_create_struct_field(field_name, type));
   }
-  return ast_create_struct_declaration(struct_name, fields, current()->line);
+  return ast_create_struct_declaration(struct_name, fields, struct_line);
 }
 
 static AstNode *declaration() {

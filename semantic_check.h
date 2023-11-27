@@ -16,6 +16,11 @@
 #define AS_VARIABLE_HASH(node) AS_VARIABLE((node)).string_hash
 #define AS_VARIABLE_VALUE(node) AS_VARIABLE((node)).value
 
+#define AS_STRUCT(node) (node)->data.struct_decl
+#define AS_STRUCT_NAME(node) AS_STRUCT((node)).name
+#define AS_STRUCT_HASH(node) AS_STRUCT((node)).string_hash
+#define AS_STRUCT_FIELDS(node) AS_STRUCT((node)).fields
+
 #define AS_BINARYOP(node) (node)->data.binaryop
 
 /* typedef struct Symbol { */

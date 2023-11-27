@@ -13,7 +13,7 @@ typedef enum {
   FUNCTION_TYPE,
   VARIABLE_TYPE,
   PARAMETER_TYPE,
-
+  STRUCT_TYPE,
 } SymbolType;
 
 typedef struct Symbol {

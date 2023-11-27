@@ -9,8 +9,6 @@ section .data
   format_false db "false", 10, 0
 
 ; Strings
-bigger_10_string db "bigger 10", 0
-1_not_bigger_string db "1 not bigger", 0
 
 ; global variabless
 
@@ -45,29 +43,8 @@ function_main:
    mov rbp, rsp
    sub rsp, 16
 
-   push 10
-   push 5
+   mov QWORD [rbp - 8], 10
 
-   pop r8
-   pop r9
-   cmp r9, r8
-   jne .L0
-   push bigger_10_string
-
-   pop rax
-   mov rsi, rax
-   mov rdi, format_string
-   xor rax, rax
-   call printf
-
-.L0:
-   push 1_not_bigger_string
-
-   pop rax
-   mov rsi, rax
-   mov rdi, format_string
-   xor rax, rax
-   call printf
 
    push 0
    pop rdx

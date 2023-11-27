@@ -34,6 +34,7 @@ static void errorAt(int line, const char *token, const char *message) {
   fprintf(stderr, "[line %d] Error", line - 1);
   fprintf(stderr, " at '%s'", token);
   fprintf(stderr, ": %s\n", message);
+  exit(64);
 }
 
 static void print_table(Table *table) {
@@ -618,7 +619,21 @@ static void semantic_check(AstNode *node) {
     break;
   }
 
+  case AST_STRUCT_FIELD:
+    break;
+
   case AST_STRUCT_DECLARATION:
+    if (env.current_scope > 0) {
+      errorAt(node->line, node->data.function_decl.name,
+              "Cannot define a function inside of a function");
+    }
+    if (!table_set(AS_TABLE(env.current_scope), AS_STRUCT_NAME(node),
+                   AS_STRUCT_HASH(node),
+                   init_symbol(node, STRUCT_TYPE, node->data_type, 0))) {
+      errorAt(node->line, node->data.function_decl.name,
+              "Cannot redefine struct.");
+    }
+
     break;
 
   case AST_BLOCK: {

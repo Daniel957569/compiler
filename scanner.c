@@ -168,7 +168,19 @@ static TokenType identifierType() {
       case 'w':
         return checkKeyword(2, 4, "itch", TOKEN_SWITCH);
       case 't':
-        return checkKeyword(2, 4, "ring", TOKEN_STRING_TYPE);
+        if (scanner.current - scanner.start > 2) {
+          switch (scanner.start[2]) {
+          case 'r':
+            if (scanner.current - scanner.start > 3) {
+              switch (scanner.start[3]) {
+              case 'u':
+                return checkKeyword(4, 2, "ct", TOKEN_STRUCT);
+              case 'i':
+                return checkKeyword(4, 2, "ng", TOKEN_STRING_TYPE);
+              }
+            }
+          }
+        }
       }
     }
   case 'w':

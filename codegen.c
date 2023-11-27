@@ -76,10 +76,14 @@ static void init_codegen_enviroment() {
 }
 
 static char *fill_whitespaces(char *str) {
-  for (int i = 0; i < strlen(str); i++) {
+  memmove(str + 1, str, strlen(str) + 1);
+
+  str[0] = '_';
+  for (int i = 1; i < strlen(str); i++) {
     if (str[i] == ' ' || str[i] == ':' || str[i] == ';')
       str[i] = '_';
   }
+
   return str;
 }
 
@@ -308,7 +312,7 @@ static void generate_condition(AstNode *node) {
           "%s\n"
           "   pop r8\n"
           "   pop r9\n"
-          "   cmp r8, r9\n"
+          "   cmp r9, r8\n"
           "   %s .L%d\n",
           codegen_env.string->content,
           comparison_op_to_jump_instruction(node->type), codegen_env.label_sum);

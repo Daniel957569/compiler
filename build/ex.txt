@@ -1,12 +1,8 @@
-struct something {
-    a: int,
-    b: string,
-}
+struct something {}
+struct something {}
+
 fun main(): int {
-    if 10 == 5 {
-        print "bigger 10";
-    } else {
-        print "1 not bigger";
-    }
+    let x: int = 10;
+   
     return 0;
 }
