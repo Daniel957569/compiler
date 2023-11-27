@@ -1,16 +1,12 @@
-fun x(a: int, b: string): int {
-    let yo: int = 69;
-    while yo > a {
-        a = a + 1;
-        print yo + a;
-        print b;
-    }
-    return yo;
+struct something {
+    a: int,
+    b: string,
 }
-
 fun main(): int {
-    let test: int = x(100, "Hello World");
-    print "the result is: ";
-    print test;
+    if 10 == 5 {
+        print "bigger 10";
+    } else {
+        print "1 not bigger";
+    }
     return 0;
 }
